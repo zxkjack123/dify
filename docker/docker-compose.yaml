@@ -516,9 +516,11 @@ services:
       PLUGIN_REMOTE_INSTALL_PORT: ${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}
       PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
       INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
-      https_proxy: "http://172.28.130.97:7890"
-      http_proxy: "http://172.28.130.97:7890"
-      no_proxy: "localhost,127.0.0.1,api,db,nginx,plugin_daemon,redis,sandbox,ssrf_proxy,weaviate,qdrand,web,worker,.local,.example,kibana,127.*,10.*,172.16.*,172.17.*,172.18.*,172.19.*,172.20.*,172.21.*,172.22.*,172.23.*,172.24.*,172.25.*,172.26.*,172.27.*,172.28.*,172.29.*,172.30.*,172.31.*,192.168.*"
+      http_proxy: "http://host.docker.internal:7890"
+      https_proxy: "http://host.docker.internal:7890"
+      HTTP_PROXY: "http://host.docker.internal:7890"  # 新增大写变量
+      HTTPS_PROXY: "http://host.docker.internal:7890" # 新增大写变量
+      no_proxy: "localhost,127.0.0.1,api,db,nginx,plugin_daemon,redis,sandbox,ssrf_proxy,weaviate,qdrant,web,worker,.local,.example,kibana,127.*,10.*,172.16.*,172.17.*,172.18.*,172.19.*,172.20.*,172.21.*,172.22.*,172.23.*,172.24.*,172.25.*,172.26.*,172.27.*,172.28.*,172.29.*,172.30.*,172.31.*,192.168.*"
     depends_on:
       db:
         condition: service_healthy
@@ -530,6 +532,8 @@ services:
     networks:
       - ssrf_proxy_network
       - default
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   # worker service
   # The Celery worker for processing the queue.
@@ -546,9 +550,11 @@ services:
       SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
       PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
       INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
-      https_proxy: "http://172.28.130.97:7890"
-      http_proxy: "http://172.28.130.97:7890"
-      no_proxy: "localhost,127.0.0.1,api,db,nginx,plugin_daemon,redis,sandbox,ssrf_proxy,weaviate,qdrand,web,worker,.local,.example,kibana,127.*,10.*,172.16.*,172.17.*,172.18.*,172.19.*,172.20.*,172.21.*,172.22.*,172.23.*,172.24.*,172.25.*,172.26.*,172.27.*,172.28.*,172.29.*,172.30.*,172.31.*,192.168.*"
+      http_proxy: "http://host.docker.internal:7890"
+      https_proxy: "http://host.docker.internal:7890"
+      HTTP_PROXY: "http://host.docker.internal:7890"  # 新增大写变量
+      HTTPS_PROXY: "http://host.docker.internal:7890" # 新增大写变量
+      no_proxy: "localhost,127.0.0.1,api,db,nginx,plugin_daemon,redis,sandbox,ssrf_proxy,weaviate,qdrant,web,worker,.local,.example,kibana,127.*,10.*,172.16.*,172.17.*,172.18.*,172.19.*,172.20.*,172.21.*,172.22.*,172.23.*,172.24.*,172.25.*,172.26.*,172.27.*,172.28.*,172.29.*,172.30.*,172.31.*,192.168.*"
     depends_on:
       db:
         condition: service_healthy
@@ -560,6 +566,9 @@ services:
     networks:
       - ssrf_proxy_network
       - default
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
 
   # Frontend web application.
   web:
@@ -585,9 +594,13 @@ services:
       ENABLE_WEBSITE_JINAREADER: ${ENABLE_WEBSITE_JINAREADER:-true}
       ENABLE_WEBSITE_FIRECRAWL: ${ENABLE_WEBSITE_FIRECRAWL:-true}
       ENABLE_WEBSITE_WATERCRAWL: ${ENABLE_WEBSITE_WATERCRAWL:-true}
-      https_proxy: "http://172.28.130.97:7890"
-      http_proxy: "http://172.28.130.97:7890"
-      no_proxy: "localhost,127.0.0.1,api,db,nginx,plugin_daemon,redis,sandbox,ssrf_proxy,weaviate,qdrand,web,worker,.local,.example,kibana,127.*,10.*,172.16.*,172.17.*,172.18.*,172.19.*,172.20.*,172.21.*,172.22.*,172.23.*,172.24.*,172.25.*,172.26.*,172.27.*,172.28.*,172.29.*,172.30.*,172.31.*,192.168.*"
+      http_proxy: "http://host.docker.internal:7890"
+      https_proxy: "http://host.docker.internal:7890"
+      HTTP_PROXY: "http://host.docker.internal:7890"  # 新增大写变量
+      HTTPS_PROXY: "http://host.docker.internal:7890" # 新增大写变量
+      no_proxy: "localhost,127.0.0.1,api,db,nginx,plugin_daemon,redis,sandbox,ssrf_proxy,weaviate,qdrant,web,worker,.local,.example,kibana,127.*,10.*,172.16.*,172.17.*,172.18.*,172.19.*,172.20.*,172.21.*,172.22.*,172.23.*,172.24.*,172.25.*,172.26.*,172.27.*,172.28.*,172.29.*,172.30.*,172.31.*,192.168.*"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
   # The postgres database.
   db:
     image: postgres:15-alpine
@@ -1162,7 +1175,7 @@ services:
     restart: always
     environment:
       XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY: d1a66dfd-c4d3-4a0a-8290-2abcb83ab3aa
-      no_proxy: "localhost,127.0.0.1,api,db,nginx,plugin_daemon,redis,sandbox,ssrf_proxy,weaviate,qdrand,web,worker,.local,.example,kibana,127.*,10.*,172.16.*,172.17.*,172.18.*,172.19.*,172.20.*,172.21.*,172.22.*,172.23.*,172.24.*,172.25.*,172.26.*,172.27.*,172.28.*,172.29.*,172.30.*,172.31.*,192.168.*"
+      no_proxy: "localhost,127.0.0.1,api,db,nginx,plugin_daemon,redis,sandbox,ssrf_proxy,weaviate,qdrant,web,worker,.local,.example,kibana,127.*,10.*,172.16.*,172.17.*,172.18.*,172.19.*,172.20.*,172.21.*,172.22.*,172.23.*,172.24.*,172.25.*,172.26.*,172.27.*,172.28.*,172.29.*,172.30.*,172.31.*,192.168.*"
       XPACK_SECURITY_ENABLED: 'true'
       XPACK_SECURITY_ENROLLMENT_ENABLED: 'false'
       XPACK_SECURITY_HTTP_SSL_ENABLED: 'false'
