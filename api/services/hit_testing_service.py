@@ -40,13 +40,15 @@ class HitTestingService:
         if not retrieval_model:
             retrieval_model = dataset.retrieval_model or default_retrieval_model
         document_ids_filter = None
-        metadata_filtering_conditions = retrieval_model.get("metadata_filtering_conditions", {})
+        metadata_filtering_conditions = retrieval_model.get(
+            "metadata_filtering_conditions", {})
         if metadata_filtering_conditions:
             dataset_retrieval = DatasetRetrieval()
 
             from core.app.app_config.entities import MetadataFilteringCondition
 
-            metadata_filtering_conditions = MetadataFilteringCondition(**metadata_filtering_conditions)
+            metadata_filtering_conditions = MetadataFilteringCondition(
+                **metadata_filtering_conditions)
 
             metadata_filter_document_ids, metadata_condition = dataset_retrieval.get_metadata_filter_condition(
                 dataset_ids=[dataset.id],
@@ -56,24 +58,28 @@ class HitTestingService:
                 inputs={},
                 tenant_id="",
                 user_id="",
-                metadata_model_config=ModelConfig(provider="", name="", mode=LLMMode.CHAT, completion_params={}),
+                metadata_model_config=ModelConfig(
+                    provider="", name="", mode=LLMMode.CHAT, completion_params={}),
             )
             if metadata_filter_document_ids:
-                document_ids_filter = metadata_filter_document_ids.get(dataset.id, [])
+                document_ids_filter = metadata_filter_document_ids.get(
+                    dataset.id, [])
             if metadata_condition and not document_ids_filter:
                 return cls.compact_retrieve_response(query, [])
         all_documents = RetrievalService.retrieve(
-            retrieval_method=retrieval_model.get("search_method", "semantic_search"),
+            retrieval_method=retrieval_model.get(
+                "search_method", "semantic_search"),
             dataset_id=dataset.id,
             query=query,
             top_k=retrieval_model.get("top_k", 4),
             score_threshold=retrieval_model.get("score_threshold", 0.0)
-            if retrieval_model["score_threshold_enabled"]
+            if retrieval_model.get("score_threshold_enabled", False)
             else 0.0,
             reranking_model=retrieval_model.get("reranking_model", None)
-            if retrieval_model["reranking_enable"]
+            if retrieval_model.get("reranking_enable", False)
             else None,
-            reranking_mode=retrieval_model.get("reranking_mode") or "reranking_model",
+            reranking_mode=retrieval_model.get(
+                "reranking_mode") or "reranking_model",
             weights=retrieval_model.get("weights", None),
             document_ids_filter=document_ids_filter,
         )
@@ -88,7 +94,8 @@ class HitTestingService:
         db.session.add(dataset_query)
         db.session.commit()
 
-        return cls.compact_retrieve_response(query, all_documents)  # type: ignore
+        # type: ignore
+        return cls.compact_retrieve_response(query, all_documents)
 
     @classmethod
     def external_retrieve(
@@ -115,7 +122,8 @@ class HitTestingService:
         )
 
         end = time.perf_counter()
-        logger.debug("External knowledge hit testing retrieve in %s seconds", end - start)
+        logger.debug(
+            "External knowledge hit testing retrieve in %s seconds", end - start)
 
         dataset_query = DatasetQuery(
             dataset_id=dataset.id, content=query, source="hit_testing", created_by_role="account", created_by=account.id
@@ -160,7 +168,8 @@ class HitTestingService:
         query = args["query"]
 
         if not query or len(query) > 250:
-            raise ValueError("Query is required and cannot exceed 250 characters")
+            raise ValueError(
+                "Query is required and cannot exceed 250 characters")
 
     @staticmethod
     def escape_query_for_search(query: str) -> str:

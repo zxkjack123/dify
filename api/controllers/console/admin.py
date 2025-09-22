@@ -1,3 +1,10 @@
+from models.model import App, InstalledApp, RecommendedApp
+from extensions.ext_redis import redis_client
+from extensions.ext_database import db
+from controllers.console.wraps import only_edition_cloud
+from controllers.console import api, console_ns
+from constants.languages import supported_language
+from configs import dify_config
 from collections.abc import Callable
 from functools import wraps
 from typing import ParamSpec, TypeVar
@@ -10,12 +17,6 @@ from werkzeug.exceptions import NotFound, Unauthorized
 
 P = ParamSpec("P")
 R = TypeVar("R")
-from configs import dify_config
-from constants.languages import supported_language
-from controllers.console import api, console_ns
-from controllers.console.wraps import only_edition_cloud
-from extensions.ext_database import db
-from models.model import App, InstalledApp, RecommendedApp
 
 
 def admin_required(view: Callable[P, R]):
@@ -29,13 +30,15 @@ def admin_required(view: Callable[P, R]):
             raise Unauthorized("Authorization header is missing.")
 
         if " " not in auth_header:
-            raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
+            raise Unauthorized(
+                "Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
 
         auth_scheme, auth_token = auth_header.split(None, 1)
         auth_scheme = auth_scheme.lower()
 
         if auth_scheme != "bearer":
-            raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
+            raise Unauthorized(
+                "Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
 
         if auth_token != dify_config.ADMIN_API_KEY:
             raise Unauthorized("API key is invalid.")
@@ -43,6 +46,56 @@ def admin_required(view: Callable[P, R]):
         return view(*args, **kwargs)
 
     return decorated
+
+
+@console_ns.route("/admin/retry-stuck-docs/status")
+class RetryStuckDocsStatus(Resource):
+    @api.doc("retry_stuck_docs_status")
+    @api.doc(description=("Show last run time and last processed count for the stuck-docs recovery scheduler"))
+    @admin_required
+    def get(self):
+        last_run = redis_client.get("retry_stuck_docs:last_run")
+        last_count = redis_client.get("retry_stuck_docs:last_count")
+        last_count_error = redis_client.get(
+            "retry_stuck_docs:last_count_error")
+        last_count_indexing = redis_client.get(
+            "retry_stuck_docs:last_count_indexing")
+        enabled = bool(
+            getattr(
+                dify_config,
+                "ENABLE_RETRY_DATASET_DOCUMENTS_TASK",
+                False,
+            )
+        )
+        interval = getattr(
+            dify_config,
+            "RETRY_DATASET_DOCUMENTS_INTERVAL_MINUTES",
+            None,
+        )
+        threshold = getattr(
+            dify_config,
+            "RETRY_DATASET_DOCUMENTS_THRESHOLD_MINUTES",
+            None,
+        )
+        max_per_run = getattr(
+            dify_config,
+            "RETRY_DATASET_DOCUMENTS_MAX_PER_RUN",
+            None,
+        )
+
+        return (
+            {
+                "last_run": float(last_run.decode()) if last_run else None,
+                "last_count": int(last_count.decode()) if last_count else 0,
+                "last_count_error": (int(last_count_error.decode()) if last_count_error else 0),
+                "last_count_indexing": (int(last_count_indexing.decode()) if last_count_indexing else 0),
+                "enabled": enabled,
+                "interval_minutes": interval,
+                "threshold_minutes": threshold,
+                "max_per_run": max_per_run,
+            },
+            200,
+        )
 
 
 @console_ns.route("/admin/insert-explore-apps")
@@ -71,17 +124,22 @@ class InsertExploreAppListApi(Resource):
     @admin_required
     def post(self):
         parser = reqparse.RequestParser()
-        parser.add_argument("app_id", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("app_id", type=str, required=True,
+                            nullable=False, location="json")
         parser.add_argument("desc", type=str, location="json")
         parser.add_argument("copyright", type=str, location="json")
         parser.add_argument("privacy_policy", type=str, location="json")
         parser.add_argument("custom_disclaimer", type=str, location="json")
-        parser.add_argument("language", type=supported_language, required=True, nullable=False, location="json")
-        parser.add_argument("category", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("position", type=int, required=True, nullable=False, location="json")
+        parser.add_argument("language", type=supported_language,
+                            required=True, nullable=False, location="json")
+        parser.add_argument("category", type=str, required=True,
+                            nullable=False, location="json")
+        parser.add_argument("position", type=int, required=True,
+                            nullable=False, location="json")
         args = parser.parse_args()
 
-        app = db.session.execute(select(App).where(App.id == args["app_id"])).scalar_one_or_none()
+        app = db.session.execute(select(App).where(
+            App.id == args["app_id"])).scalar_one_or_none()
         if not app:
             raise NotFound(f"App '{args['app_id']}' is not found")
 
@@ -99,7 +157,8 @@ class InsertExploreAppListApi(Resource):
 
         with Session(db.engine) as session:
             recommended_app = session.execute(
-                select(RecommendedApp).where(RecommendedApp.app_id == args["app_id"])
+                select(RecommendedApp).where(
+                    RecommendedApp.app_id == args["app_id"])
             ).scalar_one_or_none()
 
             if not recommended_app:
@@ -147,14 +206,16 @@ class InsertExploreAppApi(Resource):
     def delete(self, app_id):
         with Session(db.engine) as session:
             recommended_app = session.execute(
-                select(RecommendedApp).where(RecommendedApp.app_id == str(app_id))
+                select(RecommendedApp).where(
+                    RecommendedApp.app_id == str(app_id))
             ).scalar_one_or_none()
 
         if not recommended_app:
             return {"result": "success"}, 204
 
         with Session(db.engine) as session:
-            app = session.execute(select(App).where(App.id == recommended_app.app_id)).scalar_one_or_none()
+            app = session.execute(select(App).where(
+                App.id == recommended_app.app_id)).scalar_one_or_none()
 
         if app:
             app.is_public = False

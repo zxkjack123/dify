@@ -19,7 +19,8 @@ def _get_celery_ssl_options() -> Optional[dict[str, Any]]:
 
     # Check if Celery is actually using Redis
     broker_is_redis = dify_config.CELERY_BROKER_URL and (
-        dify_config.CELERY_BROKER_URL.startswith("redis://") or dify_config.CELERY_BROKER_URL.startswith("rediss://")
+        dify_config.CELERY_BROKER_URL.startswith(
+            "redis://") or dify_config.CELERY_BROKER_URL.startswith("rediss://")
     )
 
     if not broker_is_redis:
@@ -32,7 +33,8 @@ def _get_celery_ssl_options() -> Optional[dict[str, Any]]:
         "CERT_REQUIRED": ssl.CERT_REQUIRED,
     }
 
-    ssl_cert_reqs = cert_reqs_map.get(dify_config.REDIS_SSL_CERT_REQS, ssl.CERT_NONE)
+    ssl_cert_reqs = cert_reqs_map.get(
+        dify_config.REDIS_SSL_CERT_REQS, ssl.CERT_NONE)
 
     ssl_options = {
         "ssl_cert_reqs": ssl_cert_reqs,
@@ -151,11 +153,23 @@ def init_app(app: DifyApp) -> Celery:
             "task": "schedule.check_upgradable_plugin_task.check_upgradable_plugin_task",
             "schedule": crontab(minute="*/15"),
         }
+    if dify_config.ENABLE_RETRY_DATASET_DOCUMENTS_TASK:
+        imports.append("schedule.retry_stuck_dataset_documents_task")
+        beat_schedule["retry_stuck_dataset_documents_task"] = {
+            "task": ("schedule.retry_stuck_dataset_documents_task.retry_stuck_dataset_documents_task"),
+            "schedule": timedelta(
+                minutes=(
+                    dify_config.RETRY_DATASET_DOCUMENTS_INTERVAL_MINUTES
+                    if dify_config.RETRY_DATASET_DOCUMENTS_INTERVAL_MINUTES
+                    else 5
+                )
+            ),
+        }
     if dify_config.WORKFLOW_LOG_CLEANUP_ENABLED:
         # 2:00 AM every day
         imports.append("schedule.clean_workflow_runlogs_precise")
         beat_schedule["clean_workflow_runlogs_precise"] = {
-            "task": "schedule.clean_workflow_runlogs_precise.clean_workflow_runlogs_precise",
+            "task": ("schedule.clean_workflow_runlogs_precise.clean_workflow_runlogs_precise"),
             "schedule": crontab(minute="0", hour="2"),
         }
     celery_app.conf.update(beat_schedule=beat_schedule, imports=imports)

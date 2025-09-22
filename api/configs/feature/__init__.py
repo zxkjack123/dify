@@ -168,7 +168,8 @@ class PluginConfig(BaseSettings):
         default="plugin-api-key",
     )
 
-    INNER_API_KEY_FOR_PLUGIN: str = Field(description="Inner api key for plugin", default="inner-api-key")
+    INNER_API_KEY_FOR_PLUGIN: str = Field(
+        description="Inner api key for plugin", default="inner-api-key")
 
     PLUGIN_REMOTE_INSTALL_HOST: str = Field(
         description="Plugin Remote Install Host",
@@ -318,7 +319,8 @@ class HttpConfig(BaseSettings):
 
     inner_CONSOLE_CORS_ALLOW_ORIGINS: str = Field(
         description="Comma-separated list of allowed origins for CORS in the console",
-        validation_alias=AliasChoices("CONSOLE_CORS_ALLOW_ORIGINS", "CONSOLE_WEB_URL"),
+        validation_alias=AliasChoices(
+            "CONSOLE_CORS_ALLOW_ORIGINS", "CONSOLE_WEB_URL"),
         default="",
     )
 
@@ -888,6 +890,28 @@ class CeleryScheduleTasksConfig(BaseSettings):
         default=True,
     )
 
+    # Recover stuck dataset documents task
+    ENABLE_RETRY_DATASET_DOCUMENTS_TASK: bool = Field(
+        description=(
+            "Enable periodic recovery of dataset documents stuck in non-ready states"),
+        default=False,
+    )
+    RETRY_DATASET_DOCUMENTS_THRESHOLD_MINUTES: PositiveInt = Field(
+        description=(
+            "Minutes since last progress after which a document is considered stuck"),
+        default=20,
+    )
+    RETRY_DATASET_DOCUMENTS_INTERVAL_MINUTES: PositiveInt = Field(
+        description=(
+            "How often (in minutes) to scan and recover stuck dataset documents"),
+        default=5,
+    )
+    RETRY_DATASET_DOCUMENTS_MAX_PER_RUN: PositiveInt = Field(
+        description=(
+            "Maximum number of documents to recover per scheduled run"),
+        default=100,
+    )
+
 
 class PositionConfig(BaseSettings):
     POSITION_PROVIDER_PINS: str = Field(
@@ -985,8 +1009,10 @@ class AccountConfig(BaseSettings):
 
 
 class WorkflowLogConfig(BaseSettings):
-    WORKFLOW_LOG_CLEANUP_ENABLED: bool = Field(default=True, description="Enable workflow run log cleanup")
-    WORKFLOW_LOG_RETENTION_DAYS: int = Field(default=30, description="Retention days for workflow run logs")
+    WORKFLOW_LOG_CLEANUP_ENABLED: bool = Field(
+        default=True, description="Enable workflow run log cleanup")
+    WORKFLOW_LOG_RETENTION_DAYS: int = Field(
+        default=30, description="Retention days for workflow run logs")
     WORKFLOW_LOG_CLEANUP_BATCH_SIZE: int = Field(
         default=100, description="Batch size for workflow run log cleanup operations"
     )
