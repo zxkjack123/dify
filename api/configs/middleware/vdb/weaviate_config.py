@@ -28,3 +28,24 @@ class WeaviateConfig(BaseSettings):
         description="Number of objects to be processed in a single batch operation (default is 100)",
         default=100,
     )
+
+    # Client timeout and retry settings
+    WEAVIATE_CONNECT_TIMEOUT: PositiveInt = Field(
+        description="Connection timeout in seconds for Weaviate client",
+        default=5,
+    )
+
+    WEAVIATE_READ_TIMEOUT: PositiveInt = Field(
+        description="Read timeout in seconds for Weaviate client",
+        default=60,
+    )
+
+    WEAVIATE_TIMEOUT_RETRIES: PositiveInt = Field(
+        description="Number of retries on timeouts for Weaviate batch operations",
+        default=3,
+    )
+
+    WEAVIATE_BATCH_DYNAMIC: bool = Field(
+        description="Dynamically adjust Weaviate batch size based on import speed",
+        default=True,
+    )

@@ -191,6 +191,27 @@ class PluginConfig(BaseSettings):
         default=15728640 * 12,
     )
 
+    # Client timeout and retry controls for calls to the plugin daemon
+    PLUGIN_CLIENT_CONNECT_TIMEOUT: PositiveFloat = Field(
+        description="Connection timeout in seconds for plugin client requests",
+        default=5.0,
+    )
+
+    PLUGIN_CLIENT_READ_TIMEOUT: PositiveFloat = Field(
+        description="Read timeout in seconds for plugin client requests",
+        default=60.0,
+    )
+
+    PLUGIN_CLIENT_MAX_RETRIES: PositiveInt = Field(
+        description="Maximum retry attempts for plugin client invocations on transient errors",
+        default=3,
+    )
+
+    PLUGIN_CLIENT_RETRY_BACKOFF_FACTOR: PositiveFloat = Field(
+        description="Exponential backoff base (seconds) between plugin client retries",
+        default=0.5,
+    )
+
 
 class MarketplaceConfig(BaseSettings):
     """

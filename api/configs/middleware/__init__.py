@@ -200,11 +200,19 @@ class DatabaseConfig(BaseSettings):
         options = db_extras_dict.get("options", "")
         # Always include timezone
         timezone_opt = "-c timezone=UTC"
-        if options:
-            # Merge user options and timezone
-            merged_options = f"{options} {timezone_opt}"
-        else:
-            merged_options = timezone_opt
+
+        # Derive application_name from MODE env to tag connections (api/worker/beat)
+        # Respect existing application_name in user-provided options if present
+        app_name_opt = ""
+        if "application_name=" not in options:
+            mode = os.getenv("MODE", "api").strip().lower()
+            # sanitize: allow letters, numbers, dash, underscore only
+            safe_mode = "".join(ch for ch in mode if ch.isalnum() or ch in ("-", "_")) or "api"
+            app_name = f"dify-{safe_mode}"
+            app_name_opt = f"-c application_name={app_name}"
+
+        merged_parts = [part for part in (options, timezone_opt, app_name_opt) if part]
+        merged_options = " ".join(merged_parts)
 
         connect_args = {"options": merged_options}
 
@@ -215,6 +223,8 @@ class DatabaseConfig(BaseSettings):
             "pool_pre_ping": self.SQLALCHEMY_POOL_PRE_PING,
             "connect_args": connect_args,
             "pool_use_lifo": self.SQLALCHEMY_POOL_USE_LIFO,
+            # Custom gevent-safe reset is installed in extensions.ext_database;
+            # disable SQLAlchemy's default reset to avoid double-reset.
             "pool_reset_on_return": None,
         }
 

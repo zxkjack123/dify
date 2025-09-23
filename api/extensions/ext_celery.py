@@ -3,11 +3,12 @@ from datetime import timedelta
 from typing import Any, Optional
 
 import pytz
-from celery import Celery, Task
+from celery import Celery, Task, signals
 from celery.schedules import crontab
 
 from configs import dify_config
 from dify_app import DifyApp
+from models import db
 
 
 def _get_celery_ssl_options() -> Optional[dict[str, Any]]:
@@ -19,8 +20,7 @@ def _get_celery_ssl_options() -> Optional[dict[str, Any]]:
 
     # Check if Celery is actually using Redis
     broker_is_redis = dify_config.CELERY_BROKER_URL and (
-        dify_config.CELERY_BROKER_URL.startswith(
-            "redis://") or dify_config.CELERY_BROKER_URL.startswith("rediss://")
+        dify_config.CELERY_BROKER_URL.startswith("redis://") or dify_config.CELERY_BROKER_URL.startswith("rediss://")
     )
 
     if not broker_is_redis:
@@ -33,8 +33,7 @@ def _get_celery_ssl_options() -> Optional[dict[str, Any]]:
         "CERT_REQUIRED": ssl.CERT_REQUIRED,
     }
 
-    ssl_cert_reqs = cert_reqs_map.get(
-        dify_config.REDIS_SSL_CERT_REQS, ssl.CERT_NONE)
+    ssl_cert_reqs = cert_reqs_map.get(dify_config.REDIS_SSL_CERT_REQS, ssl.CERT_NONE)
 
     ssl_options = {
         "ssl_cert_reqs": ssl_cert_reqs,
@@ -52,7 +51,7 @@ def init_app(app: DifyApp) -> Celery:
             with app.app_context():
                 return self.run(*args, **kwargs)
 
-    broker_transport_options = {}
+    broker_transport_options: dict[str, Any] = {}
 
     if dify_config.CELERY_USE_SENTINEL:
         broker_transport_options = {
@@ -62,6 +61,14 @@ def init_app(app: DifyApp) -> Celery:
                 "password": dify_config.CELERY_SENTINEL_PASSWORD,
             },
         }
+    # For Redis broker, configure a visibility timeout so lost/unacked tasks
+    # are re-queued. This helps when running many replicas and a worker
+    # disappears mid-task.
+    if dify_config.CELERY_BROKER_URL and (
+        dify_config.CELERY_BROKER_URL.startswith("redis://") or dify_config.CELERY_BROKER_URL.startswith("rediss://")
+    ):
+        # default to 1 hour visibility timeout if not set above
+        broker_transport_options.setdefault("visibility_timeout", 60 * 60)
 
     celery_app = Celery(
         app.name,
@@ -79,6 +86,14 @@ def init_app(app: DifyApp) -> Celery:
         worker_hijack_root_logger=False,
         timezone=pytz.timezone(dify_config.LOG_TZ or "UTC"),
         task_ignore_result=True,
+        # Fair distribution across many replicas: don't prefetch multiple tasks
+        worker_prefetch_multiplier=1,
+        # Only ack after task is completed so if a worker dies, the task can be
+        # redelivered
+        task_acks_late=True,
+        # If a worker is lost during execution, ensure the message is requeued
+        # (for supported brokers)
+        task_reject_on_worker_lost=True,
     )
 
     # Apply SSL configuration if enabled
@@ -87,7 +102,7 @@ def init_app(app: DifyApp) -> Celery:
         celery_app.conf.update(
             broker_use_ssl=ssl_options,
             # Also apply SSL to the backend if it's Redis
-            redis_backend_use_ssl=ssl_options if dify_config.CELERY_BACKEND == "redis" else None,
+            redis_backend_use_ssl=(ssl_options if dify_config.CELERY_BACKEND == "redis" else None),
         )
 
     if dify_config.LOG_FILE:
@@ -98,6 +113,24 @@ def init_app(app: DifyApp) -> Celery:
     celery_app.set_default()
     app.extensions["celery"] = celery_app
 
+    # Ensure DB sessions are cleaned around Celery tasks to avoid
+    # lingering idle-in-transaction connections.
+    @signals.task_prerun.connect(weak=False)
+    def _cleanup_session_prerun(sender: Task, task_id: str, **kwargs: Any) -> None:  # pylint: disable=unused-argument
+        try:
+            db.session.remove()
+        except Exception:
+            # Be defensive; ignore cleanup errors in signal hooks
+            pass
+
+    @signals.task_postrun.connect(weak=False)
+    def _cleanup_session(sender: Task, task_id: str, **kwargs: Any) -> None:  # pylint: disable=unused-argument
+        try:
+            db.session.remove()
+        except Exception:
+            # Be defensive; ignore cleanup errors in signal hooks
+            pass
+
     imports = []
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
 
@@ -106,25 +139,25 @@ def init_app(app: DifyApp) -> Celery:
     if dify_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK:
         imports.append("schedule.clean_embedding_cache_task")
         beat_schedule["clean_embedding_cache_task"] = {
-            "task": "schedule.clean_embedding_cache_task.clean_embedding_cache_task",
+            "task": ("schedule.clean_embedding_cache_task.clean_embedding_cache_task"),
             "schedule": crontab(minute="0", hour="2", day_of_month=f"*/{day}"),
         }
     if dify_config.ENABLE_CLEAN_UNUSED_DATASETS_TASK:
         imports.append("schedule.clean_unused_datasets_task")
         beat_schedule["clean_unused_datasets_task"] = {
-            "task": "schedule.clean_unused_datasets_task.clean_unused_datasets_task",
+            "task": ("schedule.clean_unused_datasets_task.clean_unused_datasets_task"),
             "schedule": crontab(minute="0", hour="3", day_of_month=f"*/{day}"),
         }
     if dify_config.ENABLE_CREATE_TIDB_SERVERLESS_TASK:
         imports.append("schedule.create_tidb_serverless_task")
         beat_schedule["create_tidb_serverless_task"] = {
-            "task": "schedule.create_tidb_serverless_task.create_tidb_serverless_task",
+            "task": ("schedule.create_tidb_serverless_task.create_tidb_serverless_task"),
             "schedule": crontab(minute="0", hour="*"),
         }
     if dify_config.ENABLE_UPDATE_TIDB_SERVERLESS_STATUS_TASK:
         imports.append("schedule.update_tidb_serverless_status_task")
         beat_schedule["update_tidb_serverless_status_task"] = {
-            "task": "schedule.update_tidb_serverless_status_task.update_tidb_serverless_status_task",
+            "task": ("schedule.update_tidb_serverless_status_task.update_tidb_serverless_status_task"),
             "schedule": timedelta(minutes=10),
         }
     if dify_config.ENABLE_CLEAN_MESSAGES:
@@ -136,7 +169,7 @@ def init_app(app: DifyApp) -> Celery:
     if dify_config.ENABLE_MAIL_CLEAN_DOCUMENT_NOTIFY_TASK:
         imports.append("schedule.mail_clean_document_notify_task")
         beat_schedule["mail_clean_document_notify_task"] = {
-            "task": "schedule.mail_clean_document_notify_task.mail_clean_document_notify_task",
+            "task": ("schedule.mail_clean_document_notify_task.mail_clean_document_notify_task"),
             "schedule": crontab(minute="0", hour="10", day_of_week="1"),
         }
     if dify_config.ENABLE_DATASETS_QUEUE_MONITOR:
@@ -144,13 +177,13 @@ def init_app(app: DifyApp) -> Celery:
         beat_schedule["datasets-queue-monitor"] = {
             "task": "schedule.queue_monitor_task.queue_monitor_task",
             "schedule": timedelta(
-                minutes=dify_config.QUEUE_MONITOR_INTERVAL if dify_config.QUEUE_MONITOR_INTERVAL else 30
+                minutes=(dify_config.QUEUE_MONITOR_INTERVAL if dify_config.QUEUE_MONITOR_INTERVAL else 30)
             ),
         }
     if dify_config.ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK and dify_config.MARKETPLACE_ENABLED:
         imports.append("schedule.check_upgradable_plugin_task")
         beat_schedule["check_upgradable_plugin_task"] = {
-            "task": "schedule.check_upgradable_plugin_task.check_upgradable_plugin_task",
+            "task": ("schedule.check_upgradable_plugin_task.check_upgradable_plugin_task"),
             "schedule": crontab(minute="*/15"),
         }
     if dify_config.ENABLE_RETRY_DATASET_DOCUMENTS_TASK:

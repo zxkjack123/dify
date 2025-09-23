@@ -21,6 +21,10 @@ class WeaviateConfig(BaseModel):
     endpoint: str
     api_key: Optional[str] = None
     batch_size: int = 100
+    connect_timeout: int = 5
+    read_timeout: int = 60
+    timeout_retries: int = 3
+    batch_dynamic: bool = True
 
     @model_validator(mode="before")
     @classmethod
@@ -31,7 +35,12 @@ class WeaviateConfig(BaseModel):
 
 
 class WeaviateVector(BaseVector):
-    def __init__(self, collection_name: str, config: WeaviateConfig, attributes: list):
+    def __init__(
+        self,
+        collection_name: str,
+        config: WeaviateConfig,
+        attributes: list,
+    ):
         super().__init__(collection_name)
         self._client = self._init_client(config)
         self._attributes = attributes
@@ -39,11 +48,19 @@ class WeaviateVector(BaseVector):
     def _init_client(self, config: WeaviateConfig) -> weaviate.Client:
         auth_config = weaviate.AuthApiKey(api_key=config.api_key or "")
 
-        weaviate.connect.connection.has_grpc = False  # ty: ignore [unresolved-attribute]
+        # disable grpc path in client
+        # ty: ignore [unresolved-attribute]
+        weaviate.connect.connection.has_grpc = False
 
         try:
             client = weaviate.Client(
-                url=config.endpoint, auth_client_secret=auth_config, timeout_config=(5, 60), startup_period=None
+                url=config.endpoint,
+                auth_client_secret=auth_config,
+                timeout_config=(
+                    config.connect_timeout,
+                    config.read_timeout,
+                ),
+                startup_period=None,
             )
         except requests.ConnectionError:
             raise ConnectionError("Vector database connection error")
@@ -53,9 +70,9 @@ class WeaviateVector(BaseVector):
             # (`None` is used for manual batching)
             batch_size=config.batch_size,
             # dynamically update the `batch_size` based on import speed
-            dynamic=True,
+            dynamic=config.batch_dynamic,
             # `timeout_retries` takes an `int` value to retry on time outs
-            timeout_retries=3,
+            timeout_retries=config.timeout_retries,
         )
 
         return client
@@ -76,9 +93,17 @@ class WeaviateVector(BaseVector):
         return Dataset.gen_collection_name_by_id(dataset_id)
 
     def to_index_struct(self):
-        return {"type": self.get_type(), "vector_store": {"class_prefix": self._collection_name}}
+        return {
+            "type": self.get_type(),
+            "vector_store": {"class_prefix": self._collection_name},
+        }
 
-    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
+    def create(
+        self,
+        texts: list[Document],
+        embeddings: list[list[float]],
+        **kwargs,
+    ):
         # create collection
         self._create_collection()
         # create vector
@@ -96,7 +121,12 @@ class WeaviateVector(BaseVector):
                 self._client.schema.create_class(schema)
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
-    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
+    def add_texts(
+        self,
+        documents: list[Document],
+        embeddings: list[list[float]],
+        **kwargs,
+    ):
         uuids = self._get_uuids(documents)
         texts = [d.page_content for d in documents]
         metadatas = [d.metadata for d in documents]
@@ -124,9 +154,17 @@ class WeaviateVector(BaseVector):
         # check whether the index already exists
         schema = self._default_schema(self._collection_name)
         if self._client.schema.contains(schema):
-            where_filter = {"operator": "Equal", "path": [key], "valueText": value}
+            where_filter = {
+                "operator": "Equal",
+                "path": [key],
+                "valueText": value,
+            }
 
-            self._client.batch.delete_objects(class_name=self._collection_name, where=where_filter, output="minimal")
+            self._client.batch.delete_objects(
+                class_name=self._collection_name,
+                where=where_filter,
+                output="minimal",
+            )
 
     def delete(self):
         # check whether the index already exists
@@ -191,7 +229,13 @@ class WeaviateVector(BaseVector):
         if document_ids_filter:
             operands = []
             for document_id_filter in document_ids_filter:
-                operands.append({"path": ["document_id"], "operator": "Equal", "valueText": document_id_filter})
+                operands.append(
+                    {
+                        "path": ["document_id"],
+                        "operator": "Equal",
+                        "valueText": document_id_filter,
+                    }
+                )
             where_filter = {"operator": "Or", "operands": operands}
             query_obj = query_obj.with_where(where_filter)
         result = (
@@ -218,7 +262,11 @@ class WeaviateVector(BaseVector):
                     doc.metadata["score"] = score
                     docs.append(doc)
         # Sort the documents by score in descending order
-        docs = sorted(docs, key=lambda x: x.metadata.get("score", 0) if x.metadata else 0, reverse=True)
+        docs = sorted(
+            docs,
+            key=lambda x: x.metadata.get("score", 0) if x.metadata else 0,
+            reverse=True,
+        )
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
@@ -241,7 +289,13 @@ class WeaviateVector(BaseVector):
         if document_ids_filter:
             operands = []
             for document_id_filter in document_ids_filter:
-                operands.append({"path": ["document_id"], "operator": "Equal", "valueText": document_id_filter})
+                operands.append(
+                    {
+                        "path": ["document_id"],
+                        "operator": "Equal",
+                        "valueText": document_id_filter,
+                    }
+                )
             where_filter = {"operator": "Or", "operands": operands}
             query_obj = query_obj.with_where(where_filter)
         query_obj = query_obj.with_additional(["vector"])
@@ -253,7 +307,13 @@ class WeaviateVector(BaseVector):
         for res in result["data"]["Get"][collection_name]:
             text = res.pop(Field.TEXT_KEY.value)
             additional = res.pop("_additional")
-            docs.append(Document(page_content=text, vector=additional["vector"], metadata=res))
+            docs.append(
+                Document(
+                    page_content=text,
+                    vector=additional["vector"],
+                    metadata=res,
+                )
+            )
         return docs
 
     def _default_schema(self, index_name: str):
@@ -289,6 +349,10 @@ class WeaviateVectorFactory(AbstractVectorFactory):
                 endpoint=dify_config.WEAVIATE_ENDPOINT or "",
                 api_key=dify_config.WEAVIATE_API_KEY,
                 batch_size=dify_config.WEAVIATE_BATCH_SIZE,
+                connect_timeout=getattr(dify_config, "WEAVIATE_CONNECT_TIMEOUT", 5),
+                read_timeout=getattr(dify_config, "WEAVIATE_READ_TIMEOUT", 60),
+                timeout_retries=getattr(dify_config, "WEAVIATE_TIMEOUT_RETRIES", 3),
+                batch_dynamic=getattr(dify_config, "WEAVIATE_BATCH_DYNAMIC", True),
             ),
             attributes=attributes,
         )

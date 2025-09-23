@@ -47,6 +47,14 @@ def _setup_gevent_compatibility():
         except (AttributeError, ImportError):
             _safe_rollback(dbapi_connection)
 
+    @event.listens_for(Pool, "checkin")
+    def _safe_checkin(dbapi_connection, connection_record):  # pylint: disable=unused-argument
+        """Ensure rollback on checkin to avoid idle-in-transaction sessions."""
+        try:
+            _safe_rollback(dbapi_connection)
+        except Exception:  # pylint: disable=broad-exception-caught
+            logger.exception("Failed to rollback on checkin")
+
     _GEVENT_COMPATIBILITY_SETUP = True
 
 

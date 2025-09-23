@@ -6,7 +6,9 @@ from typing import TypeVar
 
 import requests
 from pydantic import BaseModel
+from requests.adapters import HTTPAdapter
 from requests.exceptions import HTTPError
+from urllib3.util.retry import Retry
 from yarl import URL
 
 from configs import dify_config
@@ -39,6 +41,31 @@ logger = logging.getLogger(__name__)
 
 
 class BasePluginClient:
+    def __init__(self) -> None:
+        # Create a Session with retry to mitigate transient DNS/connection resets to plugin daemon
+        self._session = requests.Session()
+        # retries only for idempotent methods by default, but we also retry POST on specific status/connection errors
+        retry = Retry(
+            total=int(dify_config.PLUGIN_CLIENT_MAX_RETRIES),
+            connect=int(dify_config.PLUGIN_CLIENT_MAX_RETRIES),
+            read=int(dify_config.PLUGIN_CLIENT_MAX_RETRIES),
+            backoff_factor=float(
+                dify_config.PLUGIN_CLIENT_RETRY_BACKOFF_FACTOR),
+            status_forcelist=(502, 503, 504),
+            allowed_methods=(
+                "GET",
+                "POST",
+                "PUT",
+                "DELETE",
+                "PATCH",
+                "OPTIONS",
+            ),
+            raise_on_status=False,
+        )
+        adapter = HTTPAdapter(max_retries=retry)
+        self._session.mount("http://", adapter)
+        self._session.mount("https://", adapter)
+
     def _request(
         self,
         method: str,
@@ -60,13 +87,32 @@ class BasePluginClient:
         if headers.get("Content-Type") == "application/json" and isinstance(data, dict):
             data = json.dumps(data)
 
+        # Requests timeout tuple: (connect, read)
+        connect_timeout = float(dify_config.PLUGIN_CLIENT_CONNECT_TIMEOUT)
+        read_timeout = float(dify_config.PLUGIN_CLIENT_READ_TIMEOUT)
+        timeout = (connect_timeout, read_timeout)
+
         try:
-            response = requests.request(
-                method=method, url=str(url), headers=headers, data=data, params=params, stream=stream, files=files
+            response = self._session.request(
+                method=method,
+                url=str(url),
+                headers=headers,
+                data=data,
+                params=params,
+                stream=stream,
+                files=files,
+                timeout=timeout,
             )
         except requests.ConnectionError:
             logger.exception("Request to Plugin Daemon Service failed")
-            raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed")
+            raise PluginDaemonInnerError(
+                code=-500, message="Request to Plugin Daemon Service failed")
+        except requests.Timeout:
+            logger.exception("Request to Plugin Daemon Service timed out")
+            raise PluginDaemonInnerError(
+                code=-500,
+                message="Request to Plugin Daemon Service timed out",
+            )
 
         return response
 
@@ -82,7 +128,15 @@ class BasePluginClient:
         """
         Make a stream request to the plugin daemon inner API
         """
-        response = self._request(method, path, headers, data, params, files, stream=True)
+        response = self._request(
+            method=method,
+            path=path,
+            headers=headers,
+            data=data,
+            params=params,
+            files=files,
+            stream=True,
+        )
         for line in response.iter_lines(chunk_size=1024 * 8):
             line = line.decode("utf-8").strip()
             if line.startswith("data:"):
@@ -137,7 +191,8 @@ class BasePluginClient:
         Make a request to the plugin daemon inner API and return the response as a model.
         """
         try:
-            response = self._request(method, path, headers, data, params, files)
+            response = self._request(
+                method, path, headers, data, params, files)
             response.raise_for_status()
         except HTTPError as e:
             msg = f"Failed to request plugin daemon, status: {e.response.status_code}, url: {path}"
@@ -152,7 +207,8 @@ class BasePluginClient:
             json_response = response.json()
             if transformer:
                 json_response = transformer(json_response)
-            rep = PluginDaemonBasicResponse[type](**json_response)  # type: ignore
+            rep = PluginDaemonBasicResponse[type](
+                **json_response)  # type: ignore
         except Exception:
             msg = (
                 f"Failed to parse response from plugin daemon to PluginDaemonBasicResponse [{str(type.__name__)}],"
@@ -170,7 +226,8 @@ class BasePluginClient:
             self._handle_plugin_daemon_error(error.error_type, error.message)
         if rep.data is None:
             frame = inspect.currentframe()
-            raise ValueError(f"got empty data from plugin daemon: {frame.f_lineno if frame else 'unknown'}")
+            raise ValueError(
+                f"got empty data from plugin daemon: {frame.f_lineno if frame else 'unknown'}")
 
         return rep.data
 
@@ -189,7 +246,8 @@ class BasePluginClient:
         """
         for line in self._stream_request(method, path, params, headers, data, files):
             try:
-                rep = PluginDaemonBasicResponse[type].model_validate_json(line)  # type: ignore
+                rep = PluginDaemonBasicResponse[type].model_validate_json(
+                    line)  # type: ignore
             except (ValueError, TypeError):
                 # TODO modify this when line_data has code and message
                 try:
@@ -206,14 +264,19 @@ class BasePluginClient:
                     try:
                         error = PluginDaemonError(**json.loads(rep.message))
                     except Exception:
-                        raise PluginDaemonInnerError(code=rep.code, message=rep.message)
+                        raise PluginDaemonInnerError(
+                            code=rep.code, message=rep.message)
 
-                    logger.error("Error in stream reponse for plugin %s", rep.__dict__)
-                    self._handle_plugin_daemon_error(error.error_type, error.message)
-                raise ValueError(f"plugin daemon: {rep.message}, code: {rep.code}")
+                    logger.error(
+                        "Error in stream reponse for plugin %s", rep.__dict__)
+                    self._handle_plugin_daemon_error(
+                        error.error_type, error.message)
+                raise ValueError(
+                    f"plugin daemon: {rep.message}, code: {rep.code}")
             if rep.data is None:
                 frame = inspect.currentframe()
-                raise ValueError(f"got empty data from plugin daemon: {frame.f_lineno if frame else 'unknown'}")
+                raise ValueError(
+                    f"got empty data from plugin daemon: {frame.f_lineno if frame else 'unknown'}")
             yield rep.data
 
     def _handle_plugin_daemon_error(self, error_type: str, message: str):
@@ -229,19 +292,26 @@ class BasePluginClient:
                 args = error_object.get("args")
                 match invoke_error_type:
                     case InvokeRateLimitError.__name__:
-                        raise InvokeRateLimitError(description=args.get("description"))
+                        raise InvokeRateLimitError(
+                            description=args.get("description"))
                     case InvokeAuthorizationError.__name__:
-                        raise InvokeAuthorizationError(description=args.get("description"))
+                        raise InvokeAuthorizationError(
+                            description=args.get("description"))
                     case InvokeBadRequestError.__name__:
-                        raise InvokeBadRequestError(description=args.get("description"))
+                        raise InvokeBadRequestError(
+                            description=args.get("description"))
                     case InvokeConnectionError.__name__:
-                        raise InvokeConnectionError(description=args.get("description"))
+                        raise InvokeConnectionError(
+                            description=args.get("description"))
                     case InvokeServerUnavailableError.__name__:
-                        raise InvokeServerUnavailableError(description=args.get("description"))
+                        raise InvokeServerUnavailableError(
+                            description=args.get("description"))
                     case CredentialsValidateFailedError.__name__:
-                        raise CredentialsValidateFailedError(error_object.get("message"))
+                        raise CredentialsValidateFailedError(
+                            error_object.get("message"))
                     case EndpointSetupFailedError.__name__:
-                        raise EndpointSetupFailedError(error_object.get("message"))
+                        raise EndpointSetupFailedError(
+                            error_object.get("message"))
                     case _:
                         raise PluginInvokeError(description=message)
             case PluginDaemonInternalServerError.__name__:
@@ -259,4 +329,5 @@ class BasePluginClient:
             case PluginPermissionDeniedError.__name__:
                 raise PluginPermissionDeniedError(description=message)
             case _:
-                raise Exception(f"got unknown error from plugin daemon: {error_type}, message: {message}")
+                raise Exception(
+                    f"got unknown error from plugin daemon: {error_type}, message: {message}")

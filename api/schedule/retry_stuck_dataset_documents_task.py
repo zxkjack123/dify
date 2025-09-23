@@ -3,7 +3,21 @@ import importlib
 import itertools
 import time
 
-import click
+try:
+    import click  # type: ignore
+
+    def _log(msg: str, color: str = "") -> None:
+        try:
+            click.echo(click.style(msg, fg=color) if color else msg)
+        except Exception:
+            # Fallback to plain print if styling fails
+            print(msg)
+except Exception:  # pragma: no cover - best-effort logging fallback
+
+    def _log(msg: str, color: str = "") -> None:
+        print(msg)
+
+
 from sqlalchemy import or_, select
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -106,12 +120,7 @@ def retry_stuck_dataset_documents_task() -> None:
 
     max_per_run = int(dify_config.RETRY_DATASET_DOCUMENTS_MAX_PER_RUN)
 
-    click.echo(
-        click.style(
-            "Scanning for stuck dataset documents...",
-            fg="green",
-        )
-    )
+    _log("Scanning for stuck dataset documents...", "green")
     start_at = time.perf_counter()
 
     processed = 0
@@ -176,7 +185,7 @@ def retry_stuck_dataset_documents_task() -> None:
 
         found = found_indexing + found_error
         if not found:
-            click.echo(click.style("No stuck documents found.", fg="cyan"))
+            _log("No stuck documents found.", "cyan")
             return
 
         # Process type A first (error), then type B (stuck indexing)
@@ -213,26 +222,17 @@ def retry_stuck_dataset_documents_task() -> None:
                     db.session.rollback()
                     # best-effort only
 
-        click.echo(
-            click.style(
-                (
-                    "Retried {processed} stuck documents (error={processed_error}, indexing={processed_indexing})."
-                ).format(
-                    processed=processed,
-                    processed_error=processed_error,
-                    processed_indexing=processed_indexing,
-                ),
-                fg="green",
-            )
+        _log(
+            ("Retried {processed} stuck documents (error={processed_error}, indexing={processed_indexing}).").format(
+                processed=processed,
+                processed_error=processed_error,
+                processed_indexing=processed_indexing,
+            ),
+            "green",
         )
     except SQLAlchemyError as ex:
         db.session.rollback()
-        click.echo(
-            click.style(
-                f"retry_stuck_dataset_documents_task SQL error: {ex}",
-                fg="red",
-            )
-        )
+        _log(f"retry_stuck_dataset_documents_task SQL error: {ex}", "red")
     finally:
         end_at = time.perf_counter()
         # Write last-run status for admin endpoint
@@ -272,9 +272,4 @@ def retry_stuck_dataset_documents_task() -> None:
                     _latency_hist.record(latency_ms)
         except Exception:
             pass
-        click.echo(
-            click.style(
-                f"Scan latency: {end_at - start_at:.3f}s",
-                fg="green",
-            )
-        )
+        _log(f"Scan latency: {end_at - start_at:.3f}s", "green")

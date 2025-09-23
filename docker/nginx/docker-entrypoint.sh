@@ -1,5 +1,38 @@
 #!/bin/bash
 
+set -euo pipefail
+
+# Wait for upstream dependencies (api, web, plugin_daemon) before starting Nginx
+# Override list/timeout via env: NGINX_UPSTREAM_WAIT_HOSTS, NGINX_UPSTREAM_WAIT_TIMEOUT
+: "${NGINX_UPSTREAM_WAIT_HOSTS:=api:5001 web:3000 plugin_daemon:5002}"
+: "${NGINX_UPSTREAM_WAIT_TIMEOUT:=90}"
+
+wait_for_endpoint() {
+    local host_port="$1"
+    local host="${host_port%%:*}"
+    local port="${host_port##*:}"
+    local timeout="${2:-90}"
+    local start_ts
+    start_ts=$(date +%s)
+    echo "[nginx-entrypoint] Waiting for ${host}:${port} (timeout ${timeout}s)" >&2
+    while true; do
+        if exec 3<>"/dev/tcp/${host}/${port}" 2>/dev/null; then
+            exec 3>&- 3<&-
+            echo "[nginx-entrypoint] ${host}:${port} is reachable" >&2
+            break
+        fi
+        sleep 2
+        if (( $(date +%s) - start_ts >= timeout )); then
+            echo "[nginx-entrypoint] WARNING: Timeout waiting for ${host}:${port}, continuing" >&2
+            break
+        fi
+    done
+}
+
+for hp in ${NGINX_UPSTREAM_WAIT_HOSTS}; do
+    wait_for_endpoint "$hp" "${NGINX_UPSTREAM_WAIT_TIMEOUT}"
+done
+
 HTTPS_CONFIG=''
 
 if [ "${NGINX_HTTPS_ENABLED}" = "true" ]; then

@@ -1,12 +1,19 @@
 import binascii
+import logging
+import time
 from collections.abc import Generator, Sequence
 from typing import IO, Optional
 
+from configs import dify_config
 from core.model_runtime.entities.llm_entities import LLMResultChunk
 from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
 from core.model_runtime.entities.model_entities import AIModelEntity
 from core.model_runtime.entities.rerank_entities import RerankResult
 from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult
+from core.model_runtime.errors.invoke import (
+    InvokeConnectionError,
+    InvokeServerUnavailableError,
+)
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin_daemon import (
     PluginBasicBooleanResponse,
@@ -22,6 +29,8 @@ from core.plugin.impl.base import BasePluginClient
 
 
 class PluginModelClient(BasePluginClient):
+    _logger = logging.getLogger(__name__)
+
     def fetch_model_providers(self, tenant_id: str) -> Sequence[PluginModelProviderEntity]:
         """
         Fetch model providers for the given tenant.
@@ -247,32 +256,81 @@ class PluginModelClient(BasePluginClient):
         """
         Invoke text embedding
         """
-        response = self._request_with_plugin_daemon_response_stream(
-            method="POST",
-            path=f"plugin/{tenant_id}/dispatch/text_embedding/invoke",
-            type=TextEmbeddingResult,
-            data=jsonable_encoder(
-                {
-                    "user_id": user_id,
-                    "data": {
-                        "provider": provider,
-                        "model_type": "text-embedding",
-                        "model": model,
-                        "credentials": credentials,
-                        "texts": texts,
-                        "input_type": input_type,
+        max_retries = int(dify_config.PLUGIN_CLIENT_MAX_RETRIES)
+        backoff = float(dify_config.PLUGIN_CLIENT_RETRY_BACKOFF_FACTOR)
+
+        last_exc: Exception | None = None
+        for attempt in range(max_retries):
+            try:
+                response = self._request_with_plugin_daemon_response_stream(
+                    method="POST",
+                    path=f"plugin/{tenant_id}/dispatch/text_embedding/invoke",
+                    type=TextEmbeddingResult,
+                    data=jsonable_encoder(
+                        {
+                            "user_id": user_id,
+                            "data": {
+                                "provider": provider,
+                                "model_type": "text-embedding",
+                                "model": model,
+                                "credentials": credentials,
+                                "texts": texts,
+                                "input_type": input_type,
+                            },
+                        }
+                    ),
+                    headers={
+                        "X-Plugin-ID": plugin_id,
+                        "Content-Type": "application/json",
                     },
-                }
-            ),
-            headers={
-                "X-Plugin-ID": plugin_id,
-                "Content-Type": "application/json",
-            },
-        )
+                )
 
-        for resp in response:
-            return resp
+                for resp in response:
+                    return resp
 
+                # No streamed payloads yielded
+                raise ValueError("Failed to invoke text embedding")
+            except (PluginDaemonInnerError, InvokeServerUnavailableError, InvokeConnectionError) as e:
+                last_exc = e
+                if attempt < max_retries - 1:
+                    sleep_s = backoff * (2**attempt)
+                    self._logger.warning(
+                        "Embedding invoke transient error (%s). retry %d/%d in %.2fs",
+                        e.__class__.__name__,
+                        attempt + 1,
+                        max_retries,
+                        sleep_s,
+                    )
+                    time.sleep(sleep_s)
+                    continue
+                raise
+            except Exception as e:  # best-effort classify transient network issues
+                msg = str(e)
+                transient_markers = (
+                    "NameResolution",
+                    "Temporary failure in name resolution",
+                    "Failed to establish a new connection",
+                    "Connection reset",
+                    "Read timed out",
+                    "timed out",
+                )
+                if any(m in msg for m in transient_markers) and attempt < max_retries - 1:
+                    last_exc = e
+                    sleep_s = backoff * (2**attempt)
+                    self._logger.warning(
+                        "Embedding invoke network error. retry %d/%d in %.2fs: %s",
+                        attempt + 1,
+                        max_retries,
+                        sleep_s,
+                        msg,
+                    )
+                    time.sleep(sleep_s)
+                    continue
+                raise
+
+        # Exhausted retries
+        if last_exc:
+            raise last_exc
         raise ValueError("Failed to invoke text embedding")
 
     def get_text_embedding_num_tokens(

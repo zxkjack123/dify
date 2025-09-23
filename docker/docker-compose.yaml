@@ -151,6 +151,10 @@ x-shared-env: &shared-api-worker-env
   VECTOR_INDEX_NAME_PREFIX: ${VECTOR_INDEX_NAME_PREFIX:-Vector_index}
   WEAVIATE_ENDPOINT: ${WEAVIATE_ENDPOINT:-http://weaviate:8080}
   WEAVIATE_API_KEY: ${WEAVIATE_API_KEY:-WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih}
+  WEAVIATE_CONNECT_TIMEOUT: ${WEAVIATE_CONNECT_TIMEOUT:-5}
+  WEAVIATE_READ_TIMEOUT: ${WEAVIATE_READ_TIMEOUT:-60}
+  WEAVIATE_TIMEOUT_RETRIES: ${WEAVIATE_TIMEOUT_RETRIES:-3}
+  WEAVIATE_BATCH_DYNAMIC: ${WEAVIATE_BATCH_DYNAMIC:-true}
   QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
   QDRANT_API_KEY: ${QDRANT_API_KEY:-difyai123456}
   QDRANT_CLIENT_TIMEOUT: ${QDRANT_CLIENT_TIMEOUT:-20}
@@ -697,6 +701,7 @@ services:
                -c 'work_mem=${POSTGRES_WORK_MEM:-4MB}'
                -c 'maintenance_work_mem=${POSTGRES_MAINTENANCE_WORK_MEM:-64MB}'
                -c 'effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE:-4096MB}'
+               -c 'idle_in_transaction_session_timeout=${POSTGRES_IDLE_IN_TRANSACTION_TIMEOUT:-5min}'
     volumes:
       - ./volumes/db/data:/var/lib/postgresql/data
     healthcheck:

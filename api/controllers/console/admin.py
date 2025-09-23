@@ -1,10 +1,3 @@
-from models.model import App, InstalledApp, RecommendedApp
-from extensions.ext_redis import redis_client
-from extensions.ext_database import db
-from controllers.console.wraps import only_edition_cloud
-from controllers.console import api, console_ns
-from constants.languages import supported_language
-from configs import dify_config
 from collections.abc import Callable
 from functools import wraps
 from typing import ParamSpec, TypeVar
@@ -14,6 +7,14 @@ from flask_restx import Resource, fields, reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound, Unauthorized
+
+from configs import dify_config
+from constants.languages import supported_language
+from controllers.console import api, console_ns
+from controllers.console.wraps import only_edition_cloud
+from extensions.ext_database import db
+from extensions.ext_redis import redis_client
+from models.model import App, InstalledApp, RecommendedApp
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -30,15 +31,13 @@ def admin_required(view: Callable[P, R]):
             raise Unauthorized("Authorization header is missing.")
 
         if " " not in auth_header:
-            raise Unauthorized(
-                "Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
+            raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
 
         auth_scheme, auth_token = auth_header.split(None, 1)
         auth_scheme = auth_scheme.lower()
 
         if auth_scheme != "bearer":
-            raise Unauthorized(
-                "Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
+            raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
 
         if auth_token != dify_config.ADMIN_API_KEY:
             raise Unauthorized("API key is invalid.")
@@ -56,10 +55,8 @@ class RetryStuckDocsStatus(Resource):
     def get(self):
         last_run = redis_client.get("retry_stuck_docs:last_run")
         last_count = redis_client.get("retry_stuck_docs:last_count")
-        last_count_error = redis_client.get(
-            "retry_stuck_docs:last_count_error")
-        last_count_indexing = redis_client.get(
-            "retry_stuck_docs:last_count_indexing")
+        last_count_error = redis_client.get("retry_stuck_docs:last_count_error")
+        last_count_indexing = redis_client.get("retry_stuck_docs:last_count_indexing")
         enabled = bool(
             getattr(
                 dify_config,
@@ -124,22 +121,17 @@ class InsertExploreAppListApi(Resource):
     @admin_required
     def post(self):
         parser = reqparse.RequestParser()
-        parser.add_argument("app_id", type=str, required=True,
-                            nullable=False, location="json")
+        parser.add_argument("app_id", type=str, required=True, nullable=False, location="json")
         parser.add_argument("desc", type=str, location="json")
         parser.add_argument("copyright", type=str, location="json")
         parser.add_argument("privacy_policy", type=str, location="json")
         parser.add_argument("custom_disclaimer", type=str, location="json")
-        parser.add_argument("language", type=supported_language,
-                            required=True, nullable=False, location="json")
-        parser.add_argument("category", type=str, required=True,
-                            nullable=False, location="json")
-        parser.add_argument("position", type=int, required=True,
-                            nullable=False, location="json")
+        parser.add_argument("language", type=supported_language, required=True, nullable=False, location="json")
+        parser.add_argument("category", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("position", type=int, required=True, nullable=False, location="json")
         args = parser.parse_args()
 
-        app = db.session.execute(select(App).where(
-            App.id == args["app_id"])).scalar_one_or_none()
+        app = db.session.execute(select(App).where(App.id == args["app_id"])).scalar_one_or_none()
         if not app:
             raise NotFound(f"App '{args['app_id']}' is not found")
 
@@ -157,8 +149,7 @@ class InsertExploreAppListApi(Resource):
 
         with Session(db.engine) as session:
             recommended_app = session.execute(
-                select(RecommendedApp).where(
-                    RecommendedApp.app_id == args["app_id"])
+                select(RecommendedApp).where(RecommendedApp.app_id == args["app_id"])
             ).scalar_one_or_none()
 
             if not recommended_app:
@@ -206,16 +197,14 @@ class InsertExploreAppApi(Resource):
     def delete(self, app_id):
         with Session(db.engine) as session:
             recommended_app = session.execute(
-                select(RecommendedApp).where(
-                    RecommendedApp.app_id == str(app_id))
+                select(RecommendedApp).where(RecommendedApp.app_id == str(app_id))
             ).scalar_one_or_none()
 
         if not recommended_app:
             return {"result": "success"}, 204
 
         with Session(db.engine) as session:
-            app = session.execute(select(App).where(
-                App.id == recommended_app.app_id)).scalar_one_or_none()
+            app = session.execute(select(App).where(App.id == recommended_app.app_id)).scalar_one_or_none()
 
         if app:
             app.is_public = False
