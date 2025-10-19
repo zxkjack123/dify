@@ -14,8 +14,16 @@ server {
       include proxy.conf;
     }
 
-    location /v1 {
-      proxy_pass http://api:5001;
+    # Console endpoints are under /console/api on the API service,
+    # but the web may call them via /v1/console/api. Rewrite only this prefix.
+    location ^~ /v1/console/api/ {
+      proxy_pass http://api:5001/console/api/;
+      include proxy.conf;
+    }
+
+    # Forward other service API calls under /v1/* to the API's /v1/*
+    location /v1/ {
+      proxy_pass http://api:5001/v1/;
       include proxy.conf;
     }
 
