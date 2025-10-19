@@ -189,6 +189,8 @@ docker/nginx/ssl/*
 !docker/nginx/ssl/.gitkeep
 docker/middleware.env
 docker/docker-compose.override.yaml
+\# Local Docker environment (keep secrets/config out of VCS)
+docker/.env
 
 sdks/python-client/build
 sdks/python-client/dist
