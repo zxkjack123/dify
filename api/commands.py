@@ -1,14 +1,17 @@
 import base64
 import json
 import logging
+import os
 import secrets
+from pathlib import Path
 from typing import Any
 
 import click
 import sqlalchemy as sa
+import yaml
 from flask import current_app
 from pydantic import TypeAdapter
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 
@@ -33,6 +36,7 @@ from libs.password import hash_password, password_pattern, valid_password
 from libs.rsa import generate_key_pair
 from models import Tenant
 from models.dataset import Dataset, DatasetCollectionBinding, DatasetMetadata, DatasetMetadataBinding, DocumentSegment
+from models.dataset import PipelineCustomizedTemplate
 from models.dataset import Document as DatasetDocument
 from models.model import Account, App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation, UploadFile
 from models.oauth import DatasourceOauthParamConfig, DatasourceProvider
@@ -1608,6 +1612,260 @@ def transform_datasource_credentials():
         click.style(f"Transforming firecrawl successfully. deal_firecrawl_count: {deal_firecrawl_count}", fg="green")
     )
     click.echo(click.style(f"Transforming jina successfully. deal_jina_count: {deal_jina_count}", fg="green"))
+
+
+def _resolve_single_tenant_id(tenant_id: str | None) -> str:
+    """Helper to resolve a tenant id. If not provided and only one tenant exists, use it."""
+    if tenant_id:
+        return tenant_id
+    tenants = db.session.query(Tenant).all()
+    if not tenants:
+        raise click.ClickException("No tenants found. Please create a tenant first.")
+    if len(tenants) > 1:
+        raise click.ClickException(
+            "Multiple tenants found. Please specify --tenant-id explicitly to avoid ambiguity."
+        )
+    return tenants[0].id
+
+
+def _resolve_account_id(tenant_id: str, account_email: str | None) -> str:
+    """Resolve an account id to attribute created_by/updated_by. Prefer email, else first account in tenant."""
+    if account_email:
+        account = db.session.query(Account).where(Account.email == account_email).one_or_none()
+        if not account:
+            raise click.ClickException(f"Account not found for email: {account_email}")
+        return account.id
+    # fallback: first account in tenant
+    tenant = db.session.query(Tenant).where(Tenant.id == tenant_id).one_or_none()
+    if not tenant:
+        raise click.ClickException(f"Tenant not found: {tenant_id}")
+    accounts = tenant.get_accounts()
+    if not accounts:
+        raise click.ClickException("No accounts found in tenant; please create an account or pass --account-email.")
+    return accounts[0].id
+
+
+def _parse_rag_pipeline_yaml(yaml_text: str) -> dict[str, Any]:
+    """Parse RAG pipeline YAML and extract fields for template storage."""
+    try:
+        data = yaml.safe_load(yaml_text)
+    except Exception as e:
+        raise click.ClickException(f"Failed to parse YAML: {e}")
+
+    if not isinstance(data, dict) or data.get("kind") != "rag_pipeline":
+        raise click.ClickException("YAML is not a rag_pipeline kind.")
+
+    rag_meta = data.get("rag_pipeline", {}) or {}
+    workflow = data.get("workflow", {}) or {}
+    graph = workflow.get("graph", {}) or {}
+    nodes = graph.get("nodes", []) or []
+
+    # extract knowledge-index node's chunk_structure
+    chunk_structure = "text_model"
+    for n in nodes:
+        node_data = (n or {}).get("data", {})
+        if node_data.get("type") == "knowledge-index":
+            chunk_structure = node_data.get("chunk_structure", chunk_structure)
+            break
+
+    icon_info = {
+        "icon_type": rag_meta.get("icon_type") or "emoji",
+        "icon": rag_meta.get("icon") or "📘",
+        "icon_background": rag_meta.get("icon_background") or "#F3F4F6",
+    }
+
+    return {
+        "name": rag_meta.get("name") or "custom-rag-pipeline",
+        "description": rag_meta.get("description") or "",
+        "icon_info": icon_info,
+        "chunk_structure": chunk_structure,
+        "yaml": yaml_text,
+    }
+
+
+@click.command(
+    "import-pipeline-template",
+    help="Import a RAG pipeline YAML as a customized template for a tenant.",
+)
+@click.option("--file", "file_path", required=True, help="Path to the .rag.yml file")
+@click.option(
+    "--tenant-id",
+    required=False,
+    help=(
+        "Target tenant id. If omitted and only one tenant exists, it will be used."
+    ),
+)
+@click.option("--language", default="en-US", show_default=True, help="Template language/locale")
+@click.option("--name", required=False, help="Override template name (defaults from YAML)")
+@click.option("--description", required=False, help="Override template description (defaults from YAML)")
+@click.option("--account-email", required=False, help="Creator account email (defaults to first account in tenant)")
+@click.option("--overwrite", is_flag=True, help="If a template with same name exists, overwrite it")
+def import_pipeline_template(
+    file_path: str,
+    tenant_id: str | None,
+    language: str | None,
+    name: str | None,
+    description: str | None,
+    account_email: str | None,
+    overwrite: bool,
+):
+    """Import a single YAML template into pipeline_customized_templates."""
+    # Resolve tenant and account
+    resolved_tenant_id = _resolve_single_tenant_id(tenant_id)
+    creator_id = _resolve_account_id(resolved_tenant_id, account_email)
+
+    # Read file
+    if not os.path.exists(file_path):
+        raise click.ClickException(f"File not found: {file_path}")
+    yaml_text = Path(file_path).read_text(encoding="utf-8")
+
+    parsed = _parse_rag_pipeline_yaml(yaml_text)
+    tpl_name = name or parsed["name"]
+    tpl_desc = description if description is not None else parsed["description"]
+    tpl_icon = parsed["icon_info"]
+    tpl_chunk_structure = parsed["chunk_structure"]
+    tpl_yaml = parsed["yaml"]
+    tpl_language = language or "en-US"
+
+    # Find position
+    max_position = (
+        db.session.query(func.max(PipelineCustomizedTemplate.position))
+        .where(PipelineCustomizedTemplate.tenant_id == resolved_tenant_id)
+        .scalar()
+    )
+    next_position = (max_position or 0) + 1
+
+    # Overwrite handling by name
+    existing = (
+        db.session.query(PipelineCustomizedTemplate)
+        .where(
+            PipelineCustomizedTemplate.tenant_id == resolved_tenant_id,
+            PipelineCustomizedTemplate.name == tpl_name,
+            PipelineCustomizedTemplate.language == tpl_language,
+        )
+        .one_or_none()
+    )
+
+    if existing and not overwrite:
+        raise click.ClickException(
+            f"Template with name '{tpl_name}' already exists for tenant/language. Use --overwrite to replace."
+        )
+
+    if existing and overwrite:
+        existing.description = tpl_desc
+        existing.icon = tpl_icon
+        existing.yaml_content = tpl_yaml
+        existing.chunk_structure = tpl_chunk_structure
+        existing.updated_by = creator_id
+        db.session.commit()
+        click.echo(click.style(f"Overwritten existing template '{tpl_name}' ({existing.id}).", fg="green"))
+        return
+
+    tpl = PipelineCustomizedTemplate(
+        tenant_id=resolved_tenant_id,
+        name=tpl_name,
+        description=tpl_desc,
+        chunk_structure=tpl_chunk_structure,
+        icon=tpl_icon,
+        position=next_position,
+        yaml_content=tpl_yaml,
+        language=tpl_language,
+        created_by=creator_id,
+    )
+    db.session.add(tpl)
+    db.session.commit()
+    click.echo(click.style(f"Imported template '{tpl_name}' with id: {tpl.id}", fg="green"))
+
+
+@click.command(
+    "import-pipeline-templates-dir",
+    help="Bulk import all .rag.yml files in a directory as customized templates for a tenant.",
+)
+@click.option("--dir", "dir_path", required=True, help="Directory containing .rag.yml files")
+@click.option(
+    "--tenant-id",
+    required=False,
+    help=(
+        "Target tenant id. If omitted and only one tenant exists, it will be used."
+    ),
+)
+@click.option("--language", default="en-US", show_default=True, help="Template language/locale")
+@click.option("--account-email", required=False, help="Creator account email (defaults to first account in tenant)")
+@click.option("--overwrite", is_flag=True, help="If a template with same name exists, overwrite it")
+def import_pipeline_templates_dir(
+    dir_path: str,
+    tenant_id: str | None,
+    language: str | None,
+    account_email: str | None,
+    overwrite: bool,
+):
+    resolved_tenant_id = _resolve_single_tenant_id(tenant_id)
+    creator_id = _resolve_account_id(resolved_tenant_id, account_email)
+
+    if not os.path.isdir(dir_path):
+        raise click.ClickException(f"Directory not found: {dir_path}")
+
+    files = [f for f in os.listdir(dir_path) if f.endswith(".rag.yml")]
+    if not files:
+        click.echo(click.style("No .rag.yml files found to import.", fg="yellow"))
+        return
+
+    imported = 0
+    for fname in sorted(files):
+        fpath = os.path.join(dir_path, fname)
+        yaml_text = Path(fpath).read_text(encoding="utf-8")
+        try:
+            parsed = _parse_rag_pipeline_yaml(yaml_text)
+        except click.ClickException as e:
+            click.echo(click.style(f"Skipping {fname}: {e}", fg="red"))
+            continue
+
+        tpl_language = language or "en-US"
+        tpl_name = parsed["name"]
+        # determine position incrementally
+        max_position = (
+            db.session.query(func.max(PipelineCustomizedTemplate.position))
+            .where(PipelineCustomizedTemplate.tenant_id == resolved_tenant_id)
+            .scalar()
+        )
+        next_position = (max_position or 0) + 1
+
+        existing = (
+            db.session.query(PipelineCustomizedTemplate)
+            .where(
+                PipelineCustomizedTemplate.tenant_id == resolved_tenant_id,
+                PipelineCustomizedTemplate.name == tpl_name,
+                PipelineCustomizedTemplate.language == tpl_language,
+            )
+            .one_or_none()
+        )
+        if existing and not overwrite:
+            click.echo(click.style(f"Exists, skip: {tpl_name}", fg="yellow"))
+            continue
+        if existing and overwrite:
+            existing.description = parsed["description"]
+            existing.icon = parsed["icon_info"]
+            existing.yaml_content = parsed["yaml"]
+            existing.chunk_structure = parsed["chunk_structure"]
+            existing.updated_by = creator_id
+        else:
+            tpl = PipelineCustomizedTemplate(
+                tenant_id=resolved_tenant_id,
+                name=tpl_name,
+                description=parsed["description"],
+                chunk_structure=parsed["chunk_structure"],
+                icon=parsed["icon_info"],
+                position=next_position,
+                yaml_content=parsed["yaml"],
+                language=tpl_language,
+                created_by=creator_id,
+            )
+            db.session.add(tpl)
+        db.session.commit()
+        imported += 1
+        click.echo(click.style(f"Imported: {tpl_name}", fg="green"))
+
+    click.echo(click.style(f"Bulk import completed. Imported/updated {imported} templates.", fg="green"))
 
 
 @click.command("install-rag-pipeline-plugins", help="Install rag pipeline plugins.")

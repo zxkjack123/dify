@@ -39,19 +39,38 @@ const InstallByDSLList = ({
   ref,
 }: Props) => {
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
-  // DSL has id, to get plugin info to show more info
-  const { isLoading: isFetchingMarketplaceDataById, data: infoGetById, error: infoByIdError } = useFetchPluginsInMarketPlaceByInfo(allPlugins.filter(d => d.type === 'marketplace').map((d) => {
-    const dependecy = (d as GitHubItemAndMarketPlaceDependency).value
-    // split org, name, version by / and :
-    // and remove @ and its suffix
-    const [orgPart, nameAndVersionPart] = dependecy.marketplace_plugin_unique_identifier!.split('@')[0].split('/')
-    const [name, version] = nameAndVersionPart.split(':')
-    return {
-      organization: orgPart,
-      plugin: name,
-      version,
+  // safe parser for marketplace plugin unique identifier
+  const parseMarketplaceIdentifier = useCallback((id?: string): { organization?: string; plugin?: string; version?: string } => {
+    if (!id || typeof id !== 'string') return {}
+    try {
+      const main = id.split('@')[0] || id
+      const hasSlash = main.includes('/')
+      const [orgMaybe, nameAndVersion] = hasSlash ? main.split('/', 2) : [undefined, main]
+      const hasColon = (nameAndVersion || '').includes(':')
+      const [plugin, version] = hasColon ? (nameAndVersion as string).split(':', 2) : [nameAndVersion, undefined]
+      return { organization: orgMaybe, plugin, version }
     }
-  }))
+    catch {
+      return {}
+    }
+  }, [])
+  // DSL has id, to get plugin info to show more info
+  const { isLoading: isFetchingMarketplaceDataById, data: infoGetById, error: infoByIdError } = useFetchPluginsInMarketPlaceByInfo(
+    allPlugins
+      .filter(d => d.type === 'marketplace')
+      .map((d) => {
+        const dependency = (d as GitHubItemAndMarketPlaceDependency).value
+        const { organization, plugin, version } = parseMarketplaceIdentifier(dependency?.marketplace_plugin_unique_identifier)
+        if (!plugin)
+          return undefined as unknown as { organization: string; plugin: string; version?: string }
+        return {
+          organization: organization || '',
+          plugin,
+          version,
+        }
+      })
+      .filter(Boolean) as { organization: string; plugin: string; version?: string }[],
+  )
   // has meta(org,name,version), to get id
   const { isLoading: isFetchingDataByMeta, data: infoByMeta, error: infoByMetaError } = useFetchPluginsInMarketPlaceByInfo(allPlugins.filter(d => d.type === 'marketplace').map(d => (d as GitHubItemAndMarketPlaceDependency).value!))
 
@@ -110,7 +129,9 @@ const InstallByDSLList = ({
     if (!isFetchingMarketplaceDataById && infoGetById?.data.list) {
       const sortedList = allPlugins.filter(d => d.type === 'marketplace').map((d) => {
         const p = d as GitHubItemAndMarketPlaceDependency
-        const id = p.value.marketplace_plugin_unique_identifier?.split(':')[0]
+        // compute plugin_id safely: org/plugin (without :version)
+        const parsed = parseMarketplaceIdentifier(p.value?.marketplace_plugin_unique_identifier)
+        const id = parsed.plugin ? (parsed.organization ? `${parsed.organization}/${parsed.plugin}` : parsed.plugin) : undefined
         const retPluginInfo = infoGetById.data.list.find(item => item.plugin.plugin_id === id)?.plugin
         return { ...retPluginInfo, from: d.type } as Plugin
       })

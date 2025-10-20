@@ -12,6 +12,8 @@ def init_app(app: DifyApp):
         extract_plugins,
         extract_unique_plugins,
         fix_app_site_missing,
+        import_pipeline_template,
+        import_pipeline_templates_dir,
         install_plugins,
         install_rag_pipeline_plugins,
         migrate_data_for_plugin,
@@ -52,6 +54,8 @@ def init_app(app: DifyApp):
         setup_datasource_oauth_client,
         transform_datasource_credentials,
         install_rag_pipeline_plugins,
+        import_pipeline_template,
+        import_pipeline_templates_dir,
     ]
     for cmd in cmds_to_register:
         app.cli.add_command(cmd)

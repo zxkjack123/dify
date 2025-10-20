@@ -127,6 +127,15 @@ help:
 	@echo "  make build-all      - Build all Docker images"
 	@echo "  make push-all       - Push all Docker images"
 	@echo "  make build-push-all - Build and push all Docker images"
+	@echo ""
+	@echo "Knowledge Templates:"
+	@echo "  make import-kb-templates - Re-import custom KB templates into the DB (docker stack must be up)"
 
 # Phony targets
-.PHONY: build-web build-api push-web push-api build-all push-all build-push-all dev-setup prepare-docker prepare-web prepare-api dev-clean help format check lint type-check
+.PHONY: build-web build-api push-web push-api build-all push-all build-push-all dev-setup prepare-docker prepare-web prepare-api dev-clean help format check lint type-check import-kb-templates
+
+# Import customized KB templates into DB
+import-kb-templates:
+	@echo "📚 Importing customized KB templates into Postgres..."
+	@bash docker/scripts/import_kb_templates.sh
+	@echo "✅ Templates imported."

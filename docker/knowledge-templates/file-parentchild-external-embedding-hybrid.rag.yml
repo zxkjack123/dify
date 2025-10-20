@@ -17,7 +17,7 @@ workflow:
   features: {}
   graph:
     nodes:
-      - id: '2005'
+      - id: "2005"
         type: custom
         height: 114
         width: 242
@@ -37,7 +37,7 @@ workflow:
           chunk_structure: hierarchical_model
           indexing_technique: high_quality
           index_chunk_variable_selector:
-            - '2004'
+            - "2004"
             - result
           embedding_model: sudon-sd-bge-m3
           embedding_model_provider: langgenius/openai_api_compatible/openai_api_compatible
@@ -51,7 +51,7 @@ workflow:
             vector_setting:
               embedding_model_name: sudon-sd-bge-m3
               embedding_provider_name: langgenius/openai_api_compatible/openai_api_compatible
-      - id: '2001'
+      - id: "2001"
         type: custom
         height: 52
         width: 242
@@ -95,7 +95,7 @@ workflow:
             - epub
             - ppt
             - md
-      - id: '2002'
+      - id: "2002"
         type: custom
         height: 90
         width: 242
@@ -114,9 +114,9 @@ workflow:
           selected: false
           is_array_file: false
           variable_selector:
-            - '2001'
+            - "2001"
             - file
-      - id: '2003'
+      - id: "2003"
         type: custom
         height: 129
         width: 242
@@ -135,7 +135,7 @@ workflow:
           selected: false
           output_type: string
           variables:
-            - - '2002'
+            - - "2002"
               - text
           advanced_settings:
             group_enabled: false
@@ -144,9 +144,9 @@ workflow:
                 group_name: Group1
                 output_type: string
                 variables:
-                  - - '2002'
+                  - - "2002"
                     - text
-      - id: '2004'
+      - id: "2004"
         type: custom
         height: 52
         width: 242
@@ -255,18 +255,18 @@ workflow:
               required: false
               default: 0
           params:
-            input_text: ''
-            max_length: ''
-            separator: ''
-            subchunk_max_length: ''
-            subchunk_separator: ''
-            parent_mode: ''
-            remove_extra_spaces: ''
-            remove_urls_emails: ''
+            input_text: ""
+            max_length: ""
+            separator: ""
+            subchunk_max_length: ""
+            subchunk_separator: ""
+            parent_mode: ""
+            remove_extra_spaces: ""
+            remove_urls_emails: ""
           tool_parameters:
             input_text:
               type: mixed
-              value: '{{#2003.output#}}'
+              value: "{{#2003.output#}}"
             max_length:
               type: variable
               value:
@@ -313,9 +313,9 @@ workflow:
     edges:
       - id: 2001-source-2002-target
         type: custom
-        source: '2001'
+        source: "2001"
         sourceHandle: source
-        target: '2002'
+        target: "2002"
         targetHandle: target
         data:
           isInIteration: false
@@ -325,9 +325,9 @@ workflow:
         zIndex: 0
       - id: 2002-source-2003-target
         type: custom
-        source: '2002'
+        source: "2002"
         sourceHandle: source
-        target: '2003'
+        target: "2003"
         targetHandle: target
         data:
           isInLoop: false
@@ -336,9 +336,9 @@ workflow:
         zIndex: 0
       - id: 2003-source-2004-target
         type: custom
-        source: '2003'
+        source: "2003"
         sourceHandle: source
-        target: '2004'
+        target: "2004"
         targetHandle: target
         data:
           isInIteration: false
@@ -348,9 +348,9 @@ workflow:
         zIndex: 0
       - id: 2004-source-2005-target
         type: custom
-        source: '2004'
+        source: "2004"
         sourceHandle: source
-        target: '2005'
+        target: "2005"
         targetHandle: target
         data:
           isInLoop: false

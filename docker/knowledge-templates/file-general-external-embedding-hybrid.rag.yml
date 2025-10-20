@@ -17,7 +17,7 @@ workflow:
   features: {}
   graph:
     nodes:
-      - id: '3005'
+      - id: "3005"
         type: custom
         height: 114
         width: 242
@@ -37,7 +37,7 @@ workflow:
           chunk_structure: text_model
           indexing_technique: high_quality
           index_chunk_variable_selector:
-            - '3004'
+            - "3004"
             - result
           embedding_model: sudon-sd-bge-m3
           embedding_model_provider: langgenius/openai_api_compatible/openai_api_compatible
@@ -51,7 +51,7 @@ workflow:
             vector_setting:
               embedding_model_name: sudon-sd-bge-m3
               embedding_provider_name: langgenius/openai_api_compatible/openai_api_compatible
-      - id: '3001'
+      - id: "3001"
         type: custom
         height: 52
         width: 242
@@ -95,7 +95,7 @@ workflow:
             - epub
             - ppt
             - md
-      - id: '3002'
+      - id: "3002"
         type: custom
         height: 90
         width: 242
@@ -114,9 +114,9 @@ workflow:
           selected: false
           is_array_file: false
           variable_selector:
-            - '3001'
+            - "3001"
             - file
-      - id: '3003'
+      - id: "3003"
         type: custom
         height: 129
         width: 242
@@ -135,9 +135,9 @@ workflow:
           selected: false
           output_type: string
           variables:
-            - - '3002'
+            - - "3002"
               - text
-      - id: '3004'
+      - id: "3004"
         type: custom
         height: 52
         width: 242
@@ -220,16 +220,16 @@ workflow:
               required: false
               default: 0
           params:
-            input_variable: ''
-            delimiter: ''
-            max_chunk_length: ''
-            chunk_overlap_length: ''
-            replace_consecutive_spaces_newlines_tabs: ''
-            delete_all_urls_and_email_addresses: ''
+            input_variable: ""
+            delimiter: ""
+            max_chunk_length: ""
+            chunk_overlap_length: ""
+            replace_consecutive_spaces_newlines_tabs: ""
+            delete_all_urls_and_email_addresses: ""
           tool_parameters:
             input_variable:
               type: mixed
-              value: '{{#3003.output#}}'
+              value: "{{#3003.output#}}"
             delimiter:
               type: variable
               value:
@@ -264,9 +264,9 @@ workflow:
     edges:
       - id: 3001-source-3002-target
         type: custom
-        source: '3001'
+        source: "3001"
         sourceHandle: source
-        target: '3002'
+        target: "3002"
         targetHandle: target
         data:
           isInIteration: false
@@ -276,9 +276,9 @@ workflow:
         zIndex: 0
       - id: 3002-source-3003-target
         type: custom
-        source: '3002'
+        source: "3002"
         sourceHandle: source
-        target: '3003'
+        target: "3003"
         targetHandle: target
         data:
           isInLoop: false
@@ -287,9 +287,9 @@ workflow:
         zIndex: 0
       - id: 3003-source-3004-target
         type: custom
-        source: '3003'
+        source: "3003"
         sourceHandle: source
-        target: '3004'
+        target: "3004"
         targetHandle: target
         data:
           isInIteration: false
@@ -299,9 +299,9 @@ workflow:
         zIndex: 0
       - id: 3004-source-3005-target
         type: custom
-        source: '3004'
+        source: "3004"
         sourceHandle: source
-        target: '3005'
+        target: "3005"
         targetHandle: target
         data:
           isInLoop: false
