@@ -231,8 +231,11 @@ workflow:
               type: mixed
               value: '{{#3003.output#}}'
             delimiter:
-              type: mixed
-              value: '{{#rag.shared.delimiter#}}'
+              type: variable
+              value:
+                - rag
+                - shared
+                - delimiter
             max_chunk_length:
               type: variable
               value:
@@ -246,11 +249,17 @@ workflow:
                 - shared
                 - chunk_overlap_length
             replace_consecutive_spaces_newlines_tabs:
-              type: mixed
-              value: '{{#rag.shared.replace_consecutive_spaces_newlines_tabs#}}'
+              type: variable
+              value:
+                - rag
+                - shared
+                - replace_consecutive_spaces_newlines_tabs
             delete_all_urls_and_email_addresses:
-              type: mixed
-              value: '{{#rag.shared.delete_all_urls_and_email_addresses#}}'
+              type: variable
+              value:
+                - rag
+                - shared
+                - delete_all_urls_and_email_addresses
           tool_configurations: {}
     edges:
       - id: 3001-source-3002-target

@@ -274,8 +274,11 @@ workflow:
                 - shared
                 - max_chunk_length
             separator:
-              type: mixed
-              value: '{{#rag.shared.delimiter#}}'
+              type: variable
+              value:
+                - rag
+                - shared
+                - delimiter
             subchunk_max_length:
               type: variable
               value:
@@ -283,8 +286,11 @@ workflow:
                 - shared
                 - child_max_chunk_length
             subchunk_separator:
-              type: mixed
-              value: '{{#rag.shared.child_delimiter#}}'
+              type: variable
+              value:
+                - rag
+                - shared
+                - child_delimiter
             parent_mode:
               type: variable
               value:
@@ -292,11 +298,17 @@ workflow:
                 - shared
                 - parent_mode
             remove_extra_spaces:
-              type: mixed
-              value: '{{#rag.shared.replace_consecutive_spaces#}}'
+              type: variable
+              value:
+                - rag
+                - shared
+                - replace_consecutive_spaces
             remove_urls_emails:
-              type: mixed
-              value: '{{#rag.shared.delete_urls_email#}}'
+              type: variable
+              value:
+                - rag
+                - shared
+                - delete_urls_email
           tool_configurations: {}
     edges:
       - id: 2001-source-2002-target
