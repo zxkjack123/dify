@@ -308,38 +308,38 @@ workflow:
           sourceType: tool
           targetType: knowledge-index
         zIndex: 0
-rag_pipeline_variables:
-  - belong_to_node_id: shared
-    variable: delimiter
-    label: Delimiter
-    type: text-input
-    required: true
-    max_length: 256
-    default_value: "\n# "
-    tooltips: "Delimiter for splitting headings (MinerU Markdown recommended: `\n# ` with a space)."
-  - belong_to_node_id: shared
-    variable: max_chunk_length
-    label: Maximum chunk length
-    type: number
-    required: true
-    max_length: 48
-    default_value: 1024
-  - belong_to_node_id: shared
-    variable: chunk_overlap_length
-    label: Chunk overlap length
-    type: number
-    required: false
-    max_length: 48
-    default_value: 0
-  - belong_to_node_id: shared
-    variable: replace_consecutive_spaces_newlines_tabs
-    label: Replace consecutive spaces, newlines and tabs
-    type: checkbox
-    required: false
-    default_value: null
-  - belong_to_node_id: shared
-    variable: delete_all_urls_and_email_addresses
-    label: Delete all URLs and email addresses
-    type: checkbox
-    required: false
-    default_value: null
+  rag_pipeline_variables:
+    - belong_to_node_id: shared
+      variable: delimiter
+      label: Delimiter
+      type: text-input
+      required: true
+      max_length: 256
+      default_value: "\n# "
+      tooltips: "Delimiter for splitting headings (MinerU Markdown recommended: `\n# ` with a space)."
+    - belong_to_node_id: shared
+      variable: max_chunk_length
+      label: Maximum chunk length
+      type: number
+      required: true
+      max_length: 48
+      default_value: 1024
+    - belong_to_node_id: shared
+      variable: chunk_overlap_length
+      label: Chunk overlap length
+      type: number
+      required: false
+      max_length: 48
+      default_value: 0
+    - belong_to_node_id: shared
+      variable: replace_consecutive_spaces_newlines_tabs
+      label: Replace consecutive spaces, newlines and tabs
+      type: checkbox
+      required: false
+      default_value: null
+    - belong_to_node_id: shared
+      variable: delete_all_urls_and_email_addresses
+      label: Delete all URLs and email addresses
+      type: checkbox
+      required: false
+      default_value: null

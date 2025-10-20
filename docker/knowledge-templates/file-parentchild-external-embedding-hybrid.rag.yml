@@ -357,83 +357,83 @@ workflow:
           sourceType: tool
           targetType: knowledge-index
         zIndex: 0
-rag_pipeline_variables:
-  - belong_to_node_id: shared
-    variable: delimiter
-    label: Delimiter
-    type: text-input
-    required: true
-    max_length: 256
-    default_value: "\n# "
-    unit: null
-    options: []
-    placeholder: null
-    tooltips: "A delimiter is the character used to separate text. For MinerU Markdown, use `\n# ` (note the space) to split by heading."
-  - belong_to_node_id: shared
-    variable: max_chunk_length
-    label: Maximum chunk length
-    type: number
-    required: true
-    max_length: 48
-    default_value: 1024
-    unit: characters
-    options: []
-    placeholder: null
-    tooltips: null
-  - belong_to_node_id: shared
-    variable: child_delimiter
-    label: Child delimiter
-    type: text-input
-    required: true
-    max_length: 256
-    default_value: "\n"
-    unit: null
-    options: []
-    placeholder: null
-    tooltips: "Delimiter for splitting child chunks."
-  - belong_to_node_id: shared
-    variable: child_max_chunk_length
-    label: Child max chunk length
-    type: number
-    required: true
-    max_length: 48
-    default_value: 512
-    unit: characters
-    options: []
-    placeholder: null
-    tooltips: null
-  - belong_to_node_id: shared
-    variable: parent_mode
-    label: Parent mode
-    type: select
-    required: true
-    max_length: 48
-    default_value: paragraph
-    unit: null
-    options:
-      - paragraph
-      - full_doc
-    placeholder: null
-    tooltips: null
-  - belong_to_node_id: shared
-    variable: replace_consecutive_spaces
-    label: Replace consecutive spaces, newlines and tabs
-    type: checkbox
-    required: false
-    max_length: 48
-    default_value: null
-    unit: null
-    options: []
-    placeholder: null
-    tooltips: null
-  - belong_to_node_id: shared
-    variable: delete_urls_email
-    label: Delete all URLs and email addresses
-    type: checkbox
-    required: false
-    max_length: 48
-    default_value: null
-    unit: null
-    options: []
-    placeholder: null
-    tooltips: null
+  rag_pipeline_variables:
+    - belong_to_node_id: shared
+      variable: delimiter
+      label: Delimiter
+      type: text-input
+      required: true
+      max_length: 256
+      default_value: "\n# "
+      unit: null
+      options: []
+      placeholder: null
+      tooltips: "A delimiter is the character used to separate text. For MinerU Markdown, use `\n# ` (note the space) to split by heading."
+    - belong_to_node_id: shared
+      variable: max_chunk_length
+      label: Maximum chunk length
+      type: number
+      required: true
+      max_length: 48
+      default_value: 1024
+      unit: characters
+      options: []
+      placeholder: null
+      tooltips: null
+    - belong_to_node_id: shared
+      variable: child_delimiter
+      label: Child delimiter
+      type: text-input
+      required: true
+      max_length: 256
+      default_value: "\n"
+      unit: null
+      options: []
+      placeholder: null
+      tooltips: "Delimiter for splitting child chunks."
+    - belong_to_node_id: shared
+      variable: child_max_chunk_length
+      label: Child max chunk length
+      type: number
+      required: true
+      max_length: 48
+      default_value: 512
+      unit: characters
+      options: []
+      placeholder: null
+      tooltips: null
+    - belong_to_node_id: shared
+      variable: parent_mode
+      label: Parent mode
+      type: select
+      required: true
+      max_length: 48
+      default_value: paragraph
+      unit: null
+      options:
+        - paragraph
+        - full_doc
+      placeholder: null
+      tooltips: null
+    - belong_to_node_id: shared
+      variable: replace_consecutive_spaces
+      label: Replace consecutive spaces, newlines and tabs
+      type: checkbox
+      required: false
+      max_length: 48
+      default_value: null
+      unit: null
+      options: []
+      placeholder: null
+      tooltips: null
+    - belong_to_node_id: shared
+      variable: delete_urls_email
+      label: Delete all URLs and email addresses
+      type: checkbox
+      required: false
+      max_length: 48
+      default_value: null
+      unit: null
+      options: []
+      placeholder: null
+      tooltips: null
