@@ -35,8 +35,14 @@ from libs.helper import email as email_validate
 from libs.password import hash_password, password_pattern, valid_password
 from libs.rsa import generate_key_pair
 from models import Tenant
-from models.dataset import Dataset, DatasetCollectionBinding, DatasetMetadata, DatasetMetadataBinding, DocumentSegment
-from models.dataset import PipelineCustomizedTemplate
+from models.dataset import (
+    Dataset,
+    DatasetCollectionBinding,
+    DatasetMetadata,
+    DatasetMetadataBinding,
+    DocumentSegment,
+    PipelineCustomizedTemplate,
+)
 from models.dataset import Document as DatasetDocument
 from models.model import Account, App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation, UploadFile
 from models.oauth import DatasourceOauthParamConfig, DatasourceProvider
