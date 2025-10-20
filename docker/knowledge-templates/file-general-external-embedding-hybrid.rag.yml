@@ -1,0 +1,336 @@
+dependencies:
+  - type: marketplace
+    current_identifier: null
+    value:
+      plugin_unique_identifier: langgenius/general_chunker:0.0.1@e3da408b7277866404c3f884d599261f9d0b9003ea4ef7eb3b64489bdf39d18b
+kind: rag_pipeline
+version: 0.1.0
+rag_pipeline:
+  name: file-general-external-embedding-hybrid
+  description: General chunking for files using external OpenAI-compatible embeddings (sudon-sd-bge-m3) and hybrid retrieval.
+  icon_type: emoji
+  icon: 📙
+  icon_background: "#FFF4ED"
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features: {}
+  graph:
+    nodes:
+      - id: '3005'
+        type: custom
+        height: 114
+        width: 242
+        position:
+          x: 980
+          y: 280
+        positionAbsolute:
+          x: 980
+          y: 280
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        data:
+          type: knowledge-index
+          title: Knowledge Base
+          selected: false
+          chunk_structure: text_model
+          indexing_technique: high_quality
+          index_chunk_variable_selector:
+            - '3004'
+            - result
+          embedding_model: sudon-sd-bge-m3
+          embedding_model_provider: langgenius/openai_api_compatible/openai_api_compatible
+          keyword_number: 10
+          retrieval_model:
+            search_method: hybrid_search
+            top_k: 3
+            score_threshold: 0.5
+            score_threshold_enabled: false
+            reranking_enable: false
+            vector_setting:
+              embedding_model_name: sudon-sd-bge-m3
+              embedding_provider_name: langgenius/openai_api_compatible/openai_api_compatible
+      - id: '3001'
+        type: custom
+        height: 52
+        width: 242
+        position:
+          x: -840
+          y: 250
+        positionAbsolute:
+          x: -840
+          y: 250
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        data:
+          type: datasource
+          title: File
+          selected: false
+          provider_type: local_file
+          provider_name: file
+          plugin_id: langgenius/file
+          datasource_label: File
+          datasource_name: upload-file
+          datasource_configurations: {}
+          datasource_parameters: {}
+          fileExtensions:
+            - txt
+            - markdown
+            - mdx
+            - pdf
+            - html
+            - xlsx
+            - xls
+            - vtt
+            - properties
+            - doc
+            - docx
+            - csv
+            - eml
+            - msg
+            - pptx
+            - xml
+            - epub
+            - ppt
+            - md
+      - id: '3002'
+        type: custom
+        height: 90
+        width: 242
+        position:
+          x: -110
+          y: 360
+        positionAbsolute:
+          x: -110
+          y: 360
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        data:
+          type: document-extractor
+          title: 文档提取器
+          selected: false
+          is_array_file: false
+          variable_selector:
+            - '3001'
+            - file
+      - id: '3003'
+        type: custom
+        height: 129
+        width: 242
+        position:
+          x: 320
+          y: 280
+        positionAbsolute:
+          x: 320
+          y: 280
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        data:
+          type: variable-aggregator
+          title: Variable Aggregator
+          selected: false
+          output_type: string
+          variables:
+            - - '3002'
+              - text
+      - id: '3004'
+        type: custom
+        height: 52
+        width: 242
+        position:
+          x: 640
+          y: 280
+        positionAbsolute:
+          x: 640
+          y: 280
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        data:
+          title: General Chunker
+          selected: false
+          type: tool
+          provider_type: builtin
+          provider_id: langgenius/general_chunker/general_chunker
+          provider_name: langgenius/general_chunker/general_chunker
+          tool_name: general_chunker
+          tool_label: General Chunker
+          tool_description: A tool for general text chunking mode, the chunks retrieved and recalled are the same.
+          is_team_authorization: true
+          output_schema:
+            type: object
+            properties:
+              result:
+                type: object
+                properties:
+                  general_chunks:
+                    type: array
+                    items:
+                      type: string
+          paramSchemas:
+            - name: input_variable
+              label:
+                en_US: Input Variable
+                zh_Hans: 输入变量
+              type: string
+              form: llm
+              required: true
+            - name: delimiter
+              label:
+                en_US: Delimiter
+                zh_Hans: 分隔符
+              type: string
+              form: llm
+              required: true
+              default: "\n# "
+            - name: max_chunk_length
+              label:
+                en_US: Maximum Chunk Length
+                zh_Hans: 最大块长度
+              type: number
+              form: llm
+              required: true
+              default: 1024
+            - name: chunk_overlap_length
+              label:
+                en_US: Chunk Overlap Length
+                zh_Hans: 重叠长度
+              type: number
+              form: llm
+              required: false
+              default: 0
+            - name: replace_consecutive_spaces_newlines_tabs
+              label:
+                en_US: Replace Consecutive Spaces, Newlines and Tabs
+                zh_Hans: 替换连续空格/换行/制表符
+              type: boolean
+              form: llm
+              required: false
+              default: 0
+            - name: delete_all_urls_and_email_addresses
+              label:
+                en_US: Delete All URLs and Email Addresses
+                zh_Hans: 删除所有URL与电子邮件地址
+              type: boolean
+              form: llm
+              required: false
+              default: 0
+          params:
+            input_variable: ''
+            delimiter: ''
+            max_chunk_length: ''
+            chunk_overlap_length: ''
+            replace_consecutive_spaces_newlines_tabs: ''
+            delete_all_urls_and_email_addresses: ''
+          tool_parameters:
+            input_variable:
+              type: mixed
+              value: '{{#3003.output#}}'
+            delimiter:
+              type: mixed
+              value: '{{#rag.shared.delimiter#}}'
+            max_chunk_length:
+              type: variable
+              value:
+                - rag
+                - shared
+                - max_chunk_length
+            chunk_overlap_length:
+              type: variable
+              value:
+                - rag
+                - shared
+                - chunk_overlap_length
+            replace_consecutive_spaces_newlines_tabs:
+              type: mixed
+              value: '{{#rag.shared.replace_consecutive_spaces_newlines_tabs#}}'
+            delete_all_urls_and_email_addresses:
+              type: mixed
+              value: '{{#rag.shared.delete_all_urls_and_email_addresses#}}'
+          tool_configurations: {}
+    edges:
+      - id: 3001-source-3002-target
+        type: custom
+        source: '3001'
+        sourceHandle: source
+        target: '3002'
+        targetHandle: target
+        data:
+          isInIteration: false
+          isInLoop: false
+          sourceType: datasource
+          targetType: document-extractor
+        zIndex: 0
+      - id: 3002-source-3003-target
+        type: custom
+        source: '3002'
+        sourceHandle: source
+        target: '3003'
+        targetHandle: target
+        data:
+          isInLoop: false
+          sourceType: document-extractor
+          targetType: variable-aggregator
+        zIndex: 0
+      - id: 3003-source-3004-target
+        type: custom
+        source: '3003'
+        sourceHandle: source
+        target: '3004'
+        targetHandle: target
+        data:
+          isInIteration: false
+          isInLoop: false
+          sourceType: variable-aggregator
+          targetType: tool
+        zIndex: 0
+      - id: 3004-source-3005-target
+        type: custom
+        source: '3004'
+        sourceHandle: source
+        target: '3005'
+        targetHandle: target
+        data:
+          isInLoop: false
+          sourceType: tool
+          targetType: knowledge-index
+        zIndex: 0
+rag_pipeline_variables:
+  - belong_to_node_id: shared
+    variable: delimiter
+    label: Delimiter
+    type: text-input
+    required: true
+    max_length: 256
+    default_value: "\n# "
+    tooltips: "Delimiter for splitting headings (MinerU Markdown recommended: `\n# ` with a space)."
+  - belong_to_node_id: shared
+    variable: max_chunk_length
+    label: Maximum chunk length
+    type: number
+    required: true
+    max_length: 48
+    default_value: 1024
+  - belong_to_node_id: shared
+    variable: chunk_overlap_length
+    label: Chunk overlap length
+    type: number
+    required: false
+    max_length: 48
+    default_value: 0
+  - belong_to_node_id: shared
+    variable: replace_consecutive_spaces_newlines_tabs
+    label: Replace consecutive spaces, newlines and tabs
+    type: checkbox
+    required: false
+    default_value: null
+  - belong_to_node_id: shared
+    variable: delete_all_urls_and_email_addresses
+    label: Delete all URLs and email addresses
+    type: checkbox
+    required: false
+    default_value: null
