@@ -5,8 +5,8 @@ services:
     environment:
       VECTOR_STORE: qdrant
       QDRANT_URL: http://qdrant:6333
-      QDRANT_GRPC_ENABLED: "false"
-      QDRANT_CLIENT_TIMEOUT: 60
+      QDRANT_GRPC_ENABLED: "true"
+      QDRANT_CLIENT_TIMEOUT: 120
 
       OPENAI_API_BASE: ${OPENAI_API_BASE:-http://localhost:8000/v1}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-changeme}
@@ -19,12 +19,17 @@ services:
       SQLALCHEMY_POOL_TIMEOUT: "30"
       SQLALCHEMY_POOL_PRE_PING: "true"
       SQLALCHEMY_POOL_USE_LIFO: "true"
-
       INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: "6000"
       ENABLE_DATASETS_QUEUE_MONITOR: "true"
       QUEUE_MONITOR_INTERVAL: "15"
       ENABLE_CLEAN_EMBEDDING_CACHE_TASK: "true"
       CLEAN_EMBEDDING_CACHE_DAY_SETTING: "7"
+      # Upload limits
+      UPLOAD_FILE_SIZE_LIMIT: "50"
+      UPLOAD_FILE_BATCH_LIMIT: "1000"
+      BATCH_UPLOAD_LIMIT: "1000"
+      # Allow long-running uploads
+      GUNICORN_TIMEOUT: "1800"
 
     volumes:
       - ./volumes/app/storage:/app/api/storage
@@ -36,8 +41,8 @@ services:
     environment:
       VECTOR_STORE: qdrant
       QDRANT_URL: http://qdrant:6333
-      QDRANT_GRPC_ENABLED: "false"
-      QDRANT_CLIENT_TIMEOUT: 60
+      QDRANT_GRPC_ENABLED: "true"
+      QDRANT_CLIENT_TIMEOUT: 120
 
       OPENAI_API_BASE: ${OPENAI_API_BASE:-http://localhost:8000/v1}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-changeme}
@@ -54,6 +59,10 @@ services:
       SQLALCHEMY_POOL_TIMEOUT: "30"
       SQLALCHEMY_POOL_PRE_PING: "true"
       SQLALCHEMY_POOL_USE_LIFO: "true"
+      # Upload limits for any file-processing endpoints invoked by worker
+      UPLOAD_FILE_SIZE_LIMIT: "50"
+      UPLOAD_FILE_BATCH_LIMIT: "1000"
+      BATCH_UPLOAD_LIMIT: "1000"
 
     volumes:
       - ./volumes/app/storage:/app/api/storage
@@ -69,10 +78,10 @@ services:
       MODE: worker
       CELERY_WORKER_CLASS: gevent
       CELERY_AUTO_SCALE: "false"
-      CELERY_WORKER_AMOUNT: "6"
+      CELERY_WORKER_AMOUNT: "16"
       CELERY_QUEUES: dataset
       CELERYD_MAX_TASKS_PER_CHILD: "1000"
-      CELERYD_PREFETCH_MULTIPLIER: "2"
+      CELERYD_PREFETCH_MULTIPLIER: "4"
       LOG_LEVEL: INFO
       SQLALCHEMY_POOL_SIZE: "120"
       SQLALCHEMY_MAX_OVERFLOW: "60"
@@ -81,10 +90,12 @@ services:
       SQLALCHEMY_POOL_USE_LIFO: "true"
       INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: "6000"
       VECTOR_STORE_BATCH_SIZE: "500"
-
+      # Upload limits for dataset ingestion flows
+      UPLOAD_FILE_SIZE_LIMIT: "50"
+      UPLOAD_FILE_BATCH_LIMIT: "1000"
+      BATCH_UPLOAD_LIMIT: "1000"
       OPENDAL_SCHEME: ${OPENDAL_SCHEME:-fs}
       OPENDAL_FS_ROOT: ${OPENDAL_FS_ROOT:-storage}
-
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
       DB_HOST: ${DB_HOST:-db}
       DB_PORT: ${DB_PORT:-5432}
@@ -95,15 +106,12 @@ services:
       REDIS_PORT: ${REDIS_PORT:-6379}
       REDIS_PASSWORD: ${REDIS_PASSWORD:-difyai123456}
       REDIS_DB: ${REDIS_DB:-0}
-
       VECTOR_STORE: qdrant
       QDRANT_URL: http://qdrant:6333
-      QDRANT_GRPC_ENABLED: "false"
-      QDRANT_CLIENT_TIMEOUT: 60
-
+      QDRANT_GRPC_ENABLED: "true"
+      QDRANT_CLIENT_TIMEOUT: 120
       OPENAI_API_BASE: ${OPENAI_API_BASE:-http://localhost:8000/v1}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-changeme}
-
       PLUGIN_DAEMON_URL: ${PLUGIN_DAEMON_URL:-http://plugin_daemon:5002}
       PLUGIN_DAEMON_KEY: ${PLUGIN_DAEMON_KEY:-lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi}
       INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
@@ -119,7 +127,7 @@ services:
     networks:
       - ssrf_proxy_network
       - default
-    cpus: "5"
+    cpus: "8"
 
   plugin_daemon:
     volumes:
@@ -140,9 +148,15 @@ services:
     entrypoint: ["sh", "/patches/run_patch.sh"]
 
   qdrant:
+    profiles:
+      - ""
     volumes:
       - ./volumes/qdrant:/qdrant/storage
     cpus: "1"
+
+  weaviate:
+    profiles:
+      - "weaviate"
 
   worker_beat:
     environment:

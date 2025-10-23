@@ -46,6 +46,7 @@ from services.plugin.data_migration import PluginDataMigration
 from services.plugin.plugin_migration import PluginMigration
 from services.plugin.plugin_service import PluginService
 from tasks.remove_app_and_related_data_task import delete_draft_variables_batch
+from tasks.retry_document_indexing_task import retry_document_indexing_task
 
 logger = logging.getLogger(__name__)
 
@@ -165,6 +166,123 @@ def vdb_migrate(scope: str):
         migrate_knowledge_vector_database()
     if scope in {"annotation", "all"}:
         migrate_annotation_vector_database()
+
+
+@click.command(
+    "retry-stale-docs",
+    help=(
+        "Bulk retry documents stuck in in-progress states (parsing/cleaning/splitting/indexing/waiting) "
+        "older than cutoff minutes (default 15). Groups by dataset and enqueues Celery retries."
+    ),
+)
+@click.option(
+    "--cutoff-minutes",
+    type=int,
+    default=15,
+    show_default=True,
+    help="Consider documents stale if last updated before now()-cutoff-minutes",
+)
+@click.option(
+    "--batch-size",
+    type=int,
+    default=100,
+    show_default=True,
+    help="Max document IDs per retry task",
+)
+@click.option(
+    "--dataset-id",
+    type=str,
+    default=None,
+    help="Optionally limit to a single dataset ID",
+)
+@click.option(
+    "--dry-run/--no-dry-run",
+    default=False,
+    show_default=True,
+    help="Only print what would be enqueued without sending tasks",
+)
+def retry_stale_docs(cutoff_minutes: int, batch_size: int, dataset_id: str | None, dry_run: bool):
+    """Retry stale in-progress documents older than cutoff.
+
+    This command:
+    - Finds documents whose indexing_status is in the active set and updated_at < now()-cutoff
+    - Skips paused documents
+    - Groups by dataset, picks a user for the tenant, and enqueues retry tasks in batches
+    """
+    try:
+        from datetime import datetime, timedelta
+
+        active_statuses = {"indexing", "parsing", "cleaning", "splitting", "waiting"}
+        cutoff = datetime.utcnow() - timedelta(minutes=cutoff_minutes)
+
+        # Build base query
+        query = (
+            db.session.query(DatasetDocument.id, DatasetDocument.dataset_id)
+            .filter(
+                DatasetDocument.indexing_status.in_(active_statuses),
+                (DatasetDocument.is_paused == False) | (DatasetDocument.is_paused.is_(None)),
+                DatasetDocument.updated_at < cutoff,
+            )
+        )
+        if dataset_id:
+            query = query.filter(DatasetDocument.dataset_id == dataset_id)
+
+        stale = query.all()
+        if not stale:
+            click.echo(click.style(f"No stale in-progress documents older than {cutoff_minutes} minutes.", fg="green"))
+            return
+
+        # Group by dataset
+        by_dataset: dict[str, list[str]] = {}
+        for doc_id, ds_id in stale:
+            by_dataset.setdefault(str(ds_id), []).append(str(doc_id))
+
+        click.echo(
+            click.style(
+                f"Found {len(stale)} stale docs across {len(by_dataset)} dataset(s) (cutoff {cutoff_minutes}m).",
+                fg="yellow",
+            )
+        )
+
+        # Enqueue per dataset
+        for ds_id, doc_ids in by_dataset.items():
+            ds: Dataset | None = db.session.query(Dataset).where(Dataset.id == ds_id).first()
+            if not ds:
+                click.echo(click.style(f"Skip dataset {ds_id}: not found", fg="red"))
+                continue
+
+            # Prefer dataset.created_by; otherwise pick any account in tenant
+            user = db.session.query(Account).where(Account.id == ds.created_by).first()
+            if not user:
+                user = db.session.query(Account).where(Account.tenant_id == ds.tenant_id).first()
+            if not user:
+                click.echo(
+                    click.style(f"Skip dataset {ds_id}: no account found in tenant {ds.tenant_id}", fg="red")
+                )
+                continue
+
+            # Chunk and enqueue
+            chunks = [doc_ids[i : i + batch_size] for i in range(0, len(doc_ids), batch_size)]
+            for chunk in chunks:
+                if dry_run:
+                    click.echo(
+                        click.style(
+                            f"[DRY-RUN] Would enqueue retry for dataset {ds_id}: {len(chunk)} docs", fg="blue"
+                        )
+                    )
+                else:
+                    retry_document_indexing_task.delay(ds_id, chunk, user.id)
+            click.echo(
+                click.style(
+                    f"Enqueued retry for dataset {ds_id}: {len(doc_ids)} docs in {len(chunks)} batch(es).",
+                    fg="green",
+                )
+            )
+
+        click.echo(click.style("Done.", fg="green"))
+    except Exception as e:
+        logger.exception("retry-stale-docs command failed")
+        raise e
 
 
 def migrate_annotation_vector_database():

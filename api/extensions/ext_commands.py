@@ -17,6 +17,7 @@ def init_app(app: DifyApp):
         migrate_data_for_plugin,
         migrate_oss,
         old_metadata_migration,
+        retry_stale_docs,
         remove_orphaned_files_on_storage,
         reset_email,
         reset_encrypt_key_pair,
@@ -51,6 +52,7 @@ def init_app(app: DifyApp):
         migrate_oss,
         setup_datasource_oauth_client,
         transform_datasource_credentials,
+        retry_stale_docs,
         install_rag_pipeline_plugins,
     ]
     for cmd in cmds_to_register:
