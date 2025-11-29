@@ -1,0 +1,35 @@
+{
+    "simple_chat_load": {
+        "description": "Template-based advanced chat workflow executed under concurrent load.",
+        "template": "simple-chat",
+        "overrides": {
+            "app_name": "Perf Simple Chat",
+            "system_prompt": "You are a high-throughput assistant used for load testing.",
+            "description": "Performance harness chat template"
+        },
+        "inputs": {
+            "query": "Ping"
+        },
+        "expected_outputs": {
+            "answer": "Pong"
+        },
+        "iterations": 20,
+        "concurrency": 5,
+        "runner_latency_ms": 10
+    },
+    "code_math_load": {
+        "description": "Code math DSL fixture to emulate CPU-bound flows.",
+        "dsl_path": "automation/tests/e2e/workflows/code_math.yml",
+        "inputs": {
+            "x": 21,
+            "y": 3
+        },
+        "expected_outputs": {
+            "sum": 24,
+            "product": 63
+        },
+        "iterations": 20,
+        "concurrency": 4,
+        "runner_latency_ms": 15
+    }
+}

@@ -24,24 +24,44 @@ class StorageMock {
   }
 }
 
-let localStorage, sessionStorage
+let localStorageRef: Storage | StorageMock
+let sessionStorageRef: Storage | StorageMock
+let shouldPatchStorage = false
 
 try {
-  localStorage = globalThis.localStorage
-  sessionStorage = globalThis.sessionStorage
+  localStorageRef = globalThis.localStorage
+  sessionStorageRef = globalThis.sessionStorage
 }
 catch {
-  localStorage = new StorageMock()
-  sessionStorage = new StorageMock()
+  localStorageRef = new StorageMock()
+  sessionStorageRef = new StorageMock()
+  shouldPatchStorage = true
 }
 
-Object.defineProperty(globalThis, 'localStorage', {
-  value: localStorage,
-})
+if (shouldPatchStorage) {
+  try {
+    Object.defineProperty(globalThis, 'localStorage', {
+      value: localStorageRef,
+      configurable: true,
+      writable: true,
+    })
+  }
+  catch {
+    // Some environments treat localStorage as read-only; last-ditch assignment keeps the mock reachable.
+    ; (globalThis as unknown as Record<string, unknown>).localStorage = localStorageRef
+  }
 
-Object.defineProperty(globalThis, 'sessionStorage', {
-  value: sessionStorage,
-})
+  try {
+    Object.defineProperty(globalThis, 'sessionStorage', {
+      value: sessionStorageRef,
+      configurable: true,
+      writable: true,
+    })
+  }
+  catch {
+    ; (globalThis as unknown as Record<string, unknown>).sessionStorage = sessionStorageRef
+  }
+}
 
 const BrowserInitializer = ({
   children,

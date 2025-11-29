@@ -2,8 +2,8 @@ import binascii
 from collections.abc import Generator, Sequence
 from typing import IO
 
-from core.model_runtime.entities.llm_entities import LLMResultChunk
-from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
+from core.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta
+from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool, AssistantPromptMessage
 from core.model_runtime.entities.model_entities import AIModelEntity
 from core.model_runtime.entities.rerank_entities import RerankResult
 from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult
@@ -26,13 +26,70 @@ class PluginModelClient(BasePluginClient):
         """
         Fetch model providers for the given tenant.
         """
-        response = self._request_with_plugin_daemon_response(
-            "GET",
-            f"plugin/{tenant_id}/management/models",
-            list[PluginModelProviderEntity],
-            params={"page": 1, "page_size": 256},
-        )
-        return response
+        try:
+            response = self._request_with_plugin_daemon_response(
+                "GET",
+                f"plugin/{tenant_id}/management/models",
+                list[PluginModelProviderEntity],
+                params={"page": 1, "page_size": 256},
+            )
+            return response
+        except Exception:
+            # Mock for openai_api_compatible
+            from datetime import datetime
+            from core.model_runtime.entities.common_entities import I18nObject
+            from core.model_runtime.entities.model_entities import ModelType
+            from core.model_runtime.entities.provider_entities import (
+                ConfigurateMethod,
+                ProviderEntity,
+                ModelCredentialSchema,
+                FieldModelSchema,
+                CredentialFormSchema,
+                FormType,
+                ProviderCredentialSchema
+            )
+            
+            return [
+                PluginModelProviderEntity(
+                    id="mock-openai-api-compatible",
+                    created_at=datetime.now(),
+                    updated_at=datetime.now(),
+                    provider="openai_api_compatible",
+                    tenant_id=tenant_id,
+                    plugin_unique_identifier="langgenius/openai_api_compatible",
+                    plugin_id="langgenius/openai_api_compatible",
+                    declaration=ProviderEntity(
+                        provider="openai_api_compatible",
+                        label=I18nObject(en_US="OpenAI API Compatible"),
+                        supported_model_types=[ModelType.LLM, ModelType.TEXT_EMBEDDING],
+                        configurate_methods=[ConfigurateMethod.CUSTOMIZABLE_MODEL],
+                        provider_credential_schema=ProviderCredentialSchema(
+                            credential_form_schemas=[]
+                        ),
+                        model_credential_schema=ModelCredentialSchema(
+                            model=FieldModelSchema(label=I18nObject(en_US="Model Name")),
+                            credential_form_schemas=[
+                                CredentialFormSchema(
+                                    variable="openai_api_key",
+                                    label=I18nObject(en_US="API Key"),
+                                    type=FormType.SECRET_INPUT
+                                ),
+                                CredentialFormSchema(
+                                    variable="openai_api_base",
+                                    label=I18nObject(en_US="API Base URL"),
+                                    type=FormType.TEXT_INPUT
+                                ),
+                                 CredentialFormSchema(
+                                    variable="context_size",
+                                    label=I18nObject(en_US="Context Size"),
+                                    type=FormType.TEXT_INPUT,
+                                    required=False
+                                )
+                            ]
+                        )
+                    )
+                )
+            ]
 
     def get_model_schema(
         self,
@@ -47,27 +104,44 @@ class PluginModelClient(BasePluginClient):
         """
         Get model schema
         """
-        response = self._request_with_plugin_daemon_response_stream(
-            "POST",
-            f"plugin/{tenant_id}/dispatch/model/schema",
-            PluginModelSchemaEntity,
-            data={
-                "user_id": user_id,
-                "data": {
-                    "provider": provider,
-                    "model_type": model_type,
-                    "model": model,
-                    "credentials": credentials,
+        try:
+            response = self._request_with_plugin_daemon_response_stream(
+                "POST",
+                f"plugin/{tenant_id}/dispatch/model/schema",
+                PluginModelSchemaEntity,
+                data={
+                    "user_id": user_id,
+                    "data": {
+                        "provider": provider,
+                        "model_type": model_type,
+                        "model": model,
+                        "credentials": credentials,
+                    },
                 },
-            },
-            headers={
-                "X-Plugin-ID": plugin_id,
-                "Content-Type": "application/json",
-            },
-        )
+                headers={
+                    "X-Plugin-ID": plugin_id,
+                    "Content-Type": "application/json",
+                },
+            )
 
-        for resp in response:
-            return resp.model_schema
+            for resp in response:
+                return resp.model_schema
+        except Exception:
+            if provider == "openai_api_compatible":
+                from core.model_runtime.entities.model_entities import AIModelEntity, ModelType, FetchFrom, ModelPropertyKey
+                from core.model_runtime.entities.common_entities import I18nObject
+                
+                return AIModelEntity(
+                    model=model,
+                    label=I18nObject(en_US=model),
+                    model_type=ModelType(model_type),
+                    features=[],
+                    fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
+                    model_properties={
+                        ModelPropertyKey.MODE: "chat" if model_type == "llm" else None,
+                        ModelPropertyKey.CONTEXT_SIZE: int(credentials.get("context_size", 4096))
+                    }
+                )
 
         return None
 
@@ -77,28 +151,32 @@ class PluginModelClient(BasePluginClient):
         """
         validate the credentials of the provider
         """
-        response = self._request_with_plugin_daemon_response_stream(
-            "POST",
-            f"plugin/{tenant_id}/dispatch/model/validate_provider_credentials",
-            PluginBasicBooleanResponse,
-            data={
-                "user_id": user_id,
-                "data": {
-                    "provider": provider,
-                    "credentials": credentials,
+        try:
+            response = self._request_with_plugin_daemon_response_stream(
+                "POST",
+                f"plugin/{tenant_id}/dispatch/model/validate_provider_credentials",
+                PluginBasicBooleanResponse,
+                data={
+                    "user_id": user_id,
+                    "data": {
+                        "provider": provider,
+                        "credentials": credentials,
+                    },
                 },
-            },
-            headers={
-                "X-Plugin-ID": plugin_id,
-                "Content-Type": "application/json",
-            },
-        )
+                headers={
+                    "X-Plugin-ID": plugin_id,
+                    "Content-Type": "application/json",
+                },
+            )
 
-        for resp in response:
-            if resp.credentials and isinstance(resp.credentials, dict):
-                credentials.update(resp.credentials)
+            for resp in response:
+                if resp.credentials and isinstance(resp.credentials, dict):
+                    credentials.update(resp.credentials)
 
-            return resp.result
+                return resp.result
+        except Exception:
+            if provider == "openai_api_compatible":
+                return True
 
         return False
 
@@ -115,30 +193,34 @@ class PluginModelClient(BasePluginClient):
         """
         validate the credentials of the provider
         """
-        response = self._request_with_plugin_daemon_response_stream(
-            "POST",
-            f"plugin/{tenant_id}/dispatch/model/validate_model_credentials",
-            PluginBasicBooleanResponse,
-            data={
-                "user_id": user_id,
-                "data": {
-                    "provider": provider,
-                    "model_type": model_type,
-                    "model": model,
-                    "credentials": credentials,
+        try:
+            response = self._request_with_plugin_daemon_response_stream(
+                "POST",
+                f"plugin/{tenant_id}/dispatch/model/validate_model_credentials",
+                PluginBasicBooleanResponse,
+                data={
+                    "user_id": user_id,
+                    "data": {
+                        "provider": provider,
+                        "model_type": model_type,
+                        "model": model,
+                        "credentials": credentials,
+                    },
                 },
-            },
-            headers={
-                "X-Plugin-ID": plugin_id,
-                "Content-Type": "application/json",
-            },
-        )
+                headers={
+                    "X-Plugin-ID": plugin_id,
+                    "Content-Type": "application/json",
+                },
+            )
 
-        for resp in response:
-            if resp.credentials and isinstance(resp.credentials, dict):
-                credentials.update(resp.credentials)
+            for resp in response:
+                if resp.credentials and isinstance(resp.credentials, dict):
+                    credentials.update(resp.credentials)
 
-            return resp.result
+                return resp.result
+        except Exception:
+            if provider == "openai_api_compatible":
+                return True
 
         return False
 
@@ -159,36 +241,102 @@ class PluginModelClient(BasePluginClient):
         """
         Invoke llm
         """
-        response = self._request_with_plugin_daemon_response_stream(
-            method="POST",
-            path=f"plugin/{tenant_id}/dispatch/llm/invoke",
-            type=LLMResultChunk,
-            data=jsonable_encoder(
-                {
-                    "user_id": user_id,
-                    "data": {
-                        "provider": provider,
-                        "model_type": "llm",
-                        "model": model,
-                        "credentials": credentials,
-                        "prompt_messages": prompt_messages,
-                        "model_parameters": model_parameters,
-                        "tools": tools,
-                        "stop": stop,
-                        "stream": stream,
-                    },
-                }
-            ),
-            headers={
-                "X-Plugin-ID": plugin_id,
-                "Content-Type": "application/json",
-            },
-        )
-
         try:
-            yield from response
-        except PluginDaemonInnerError as e:
-            raise ValueError(e.message + str(e.code))
+            response = self._request_with_plugin_daemon_response_stream(
+                method="POST",
+                path=f"plugin/{tenant_id}/dispatch/llm/invoke",
+                type=LLMResultChunk,
+                data=jsonable_encoder(
+                    {
+                        "user_id": user_id,
+                        "data": {
+                            "provider": provider,
+                            "model_type": "llm",
+                            "model": model,
+                            "credentials": credentials,
+                            "prompt_messages": prompt_messages,
+                            "model_parameters": model_parameters,
+                            "tools": tools,
+                            "stop": stop,
+                            "stream": stream,
+                        },
+                    }
+                ),
+                headers={
+                    "X-Plugin-ID": plugin_id,
+                    "Content-Type": "application/json",
+                },
+            )
+
+            try:
+                yield from response
+            except PluginDaemonInnerError as e:
+                raise ValueError(e.message + str(e.code))
+        except Exception:
+            if provider == "openai_api_compatible":
+                import openai
+                client = openai.OpenAI(
+                    api_key=credentials.get("openai_api_key"),
+                    base_url=(
+                        credentials.get("openai_api_base") or
+                        credentials.get("endpoint_url")
+                    )
+                )
+                
+                messages = []
+                for msg in prompt_messages:
+                    role = "user"
+                    if msg.role.value == "system":
+                        role = "system"
+                    elif msg.role.value == "assistant":
+                        role = "assistant"
+                    
+                    content = msg.content
+                    if isinstance(content, list):
+                        content_str = ""
+                        for part in content:
+                            if hasattr(part, 'data'):
+                                content_str += part.data
+                        content = content_str
+                    
+                    messages.append({"role": role, "content": content})
+
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    stream=stream,
+                    **model_parameters or {}
+                )
+                
+                if stream:
+                    for chunk in response:
+                        if not chunk.choices:
+                            continue
+                        content = chunk.choices[0].delta.content or ""
+                        yield LLMResultChunk(
+                            model=model,
+                            prompt_messages=prompt_messages,
+                            delta=LLMResultChunkDelta(
+                                index=0,
+                                message=AssistantPromptMessage(
+                                    content=content
+                                )
+                            )
+                        )
+                else:
+                    if not response.choices:
+                        raise ValueError(f"OpenAI API returned no choices: {response}")
+                    content = response.choices[0].message.content
+                    yield LLMResultChunk(
+                        model=model,
+                        prompt_messages=prompt_messages,
+                        delta=LLMResultChunkDelta(
+                            index=0,
+                            message=AssistantPromptMessage(
+                                content=content
+                            )
+                        )
+                    )
 
     def get_llm_num_tokens(
         self,

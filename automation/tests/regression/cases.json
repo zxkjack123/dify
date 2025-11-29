@@ -1,0 +1,60 @@
+{
+  "simple_chat": {
+    "description": "Basic advanced-chat workflow generated from simple template.",
+    "template": "simple-chat",
+    "overrides": {
+      "app_name": "Regression Simple Chat",
+      "system_prompt": "You are a regression assistant that echoes input succinctly.",
+      "description": "Regression harness chat template"
+    },
+    "inputs": {
+      "query": "Hello regression!"
+    },
+    "expected_outputs": {
+      "answer": "Hello regression harness!"
+    },
+    "expected_node_count": 3
+  },
+  "translator": {
+    "description": "Translation flow ensures template rendering and dry-run verification.",
+    "template": "translator",
+    "overrides": {
+      "app_name": "Regression Translator",
+      "target_language": "English"
+    },
+    "inputs": {
+      "query": "Bonjour"
+    },
+    "expected_outputs": {
+      "answer": "Hello"
+    },
+    "expected_node_count": 3
+  },
+  "sentiment": {
+    "description": "Sentiment blueprint returning structured JSON text.",
+    "template": "sentiment-guardian",
+    "overrides": {
+      "app_name": "Regression Sentiment"
+    },
+    "inputs": {
+      "query": "I love using Dify!"
+    },
+    "expected_outputs": {
+      "answer": "{\"sentiment\": \"positive\", \"rationale\": \"great\"}"
+    },
+    "expected_node_count": 3
+  },
+  "code_math": {
+    "description": "Code node workflow reused from e2e fixtures.",
+    "dsl_path": "automation/tests/e2e/workflows/code_math.yml",
+    "inputs": {
+      "x": 5,
+      "y": 7
+    },
+    "expected_outputs": {
+      "sum": 12,
+      "product": 35
+    },
+    "expected_node_count": 3
+  }
+}

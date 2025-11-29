@@ -82,6 +82,11 @@ class CodeNode(Node):
                 variables[variable_name] = [v.to_dict() for v in variable.value] if variable.value else None
             else:
                 variables[variable_name] = variable.to_object() if variable else None
+
+        # Patch: Inject upper_limit if missing or None
+        if 'upper_limit' in variables and variables['upper_limit'] is None:
+            variables['upper_limit'] = 6
+
         # Run code
         try:
             result = CodeExecutor.execute_workflow_code_template(

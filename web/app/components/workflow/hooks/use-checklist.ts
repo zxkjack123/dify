@@ -116,10 +116,25 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
 
       if (node.type === CUSTOM_NODE) {
         const checkData = getCheckData(node.data)
-        let { errorMessage } = nodesExtraData![node.data.type].checkValid(checkData, t, moreDataForCheckValid)
+        const nodeMeta = nodesExtraData?.[node.data.type]
+
+        if (!nodeMeta || typeof nodeMeta.checkValid !== 'function') {
+          // Metadata not yet available (e.g. during initial render); skip validation for now but keep the node in the checklist.
+          list.push({
+            id: node.id,
+            type: node.data.type,
+            title: node.data.title,
+            toolIcon,
+            unConnected: !validNodes.find(n => n.id === node.id),
+            errorMessage: undefined,
+          })
+          continue
+        }
+
+        let { errorMessage } = nodeMeta.checkValid(checkData, t, moreDataForCheckValid)
 
         if (!errorMessage) {
-          const availableVars = map[node.id].availableVars
+          const availableVars = map[node.id]?.availableVars || []
 
           for (const variable of usedVars) {
             const isSpecialVars = isSpecialVar(variable[0])
@@ -149,7 +164,9 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
       }
     }
 
-    const isRequiredNodesType = Object.keys(nodesExtraData!).filter((key: any) => (nodesExtraData as any)[key].metaData.isRequired)
+    const isRequiredNodesType = Object.entries(nodesExtraData || {})
+      .filter(([, meta]) => meta?.metaData?.isRequired)
+      .map(([key]) => key)
 
     isRequiredNodesType.forEach((type: string) => {
       if (!filteredNodes.find(node => node.data.type === type)) {
@@ -275,14 +292,21 @@ export const useChecklistBeforePublish = () => {
         usedVars = getNodeUsedVars(node).filter(v => v.length > 0)
       }
       const checkData = getCheckData(node.data, datasets)
-      const { errorMessage } = nodesExtraData![node.data.type as BlockEnum].checkValid(checkData, t, moreDataForCheckValid)
+      const nodeMeta = nodesExtraData?.[node.data.type as BlockEnum]
+
+      if (!nodeMeta || typeof nodeMeta.checkValid !== 'function') {
+        notify({ type: 'error', message: `[${node.data.title}] Validation metadata is still loading, please try again.` })
+        return false
+      }
+
+      const { errorMessage } = nodeMeta.checkValid(checkData, t, moreDataForCheckValid)
 
       if (errorMessage) {
         notify({ type: 'error', message: `[${node.data.title}] ${errorMessage}` })
         return false
       }
 
-      const availableVars = map[node.id].availableVars
+      const availableVars = map[node.id]?.availableVars || []
 
       for (const variable of usedVars) {
         const isSpecialVars = isSpecialVar(variable[0])
@@ -308,7 +332,9 @@ export const useChecklistBeforePublish = () => {
       }
     }
 
-    const isRequiredNodesType = Object.keys(nodesExtraData!).filter((key: any) => (nodesExtraData as any)[key].metaData.isRequired)
+    const isRequiredNodesType = Object.entries(nodesExtraData || {})
+      .filter(([, meta]) => meta?.metaData?.isRequired)
+      .map(([key]) => key)
 
     for (let i = 0; i < isRequiredNodesType.length; i++) {
       const type = isRequiredNodesType[i]

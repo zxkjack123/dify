@@ -1,0 +1,20 @@
+{
+    "simple_greeting.yml": {
+        "inputs": {
+            "name": "Dify"
+        },
+        "expected_outputs": {
+            "greeting": "Hello, Dify!"
+        }
+    },
+    "code_math.yml": {
+        "inputs": {
+            "x": 10,
+            "y": 5
+        },
+        "expected_outputs": {
+            "sum": 15,
+            "product": 50
+        }
+    }
+}

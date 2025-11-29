@@ -100,6 +100,9 @@ logger = logging.getLogger(__name__)
 class LLMNode(Node):
     node_type = NodeType.LLM
 
+    _DEFAULT_TIMEOUT_RETRY_ATTEMPTS = 3
+    _DEFAULT_TIMEOUT_RETRY_INTERVAL_MS = 1000
+
     _node_data: LLMNodeData
 
     # Compiled regex for extracting <think> blocks (with compatibility for attributes)
@@ -137,7 +140,20 @@ class LLMNode(Node):
         self._llm_file_saver = llm_file_saver
 
     def init_node_data(self, data: Mapping[str, Any]):
+        raw_retry_config = data.get("retry_config") if isinstance(data, Mapping) else None
         self._node_data = LLMNodeData.model_validate(data)
+
+        if not raw_retry_config:
+            self._node_data.retry_config = RetryConfig(
+                max_retries=self._DEFAULT_TIMEOUT_RETRY_ATTEMPTS,
+                retry_interval=self._DEFAULT_TIMEOUT_RETRY_INTERVAL_MS,
+                retry_enabled=True,
+            )
+        else:
+            if self._node_data.retry_config.retry_enabled and self._node_data.retry_config.max_retries <= 0:
+                self._node_data.retry_config.max_retries = self._DEFAULT_TIMEOUT_RETRY_ATTEMPTS
+            if self._node_data.retry_config.retry_interval <= 0:
+                self._node_data.retry_config.retry_interval = self._DEFAULT_TIMEOUT_RETRY_INTERVAL_MS
 
     def _get_error_strategy(self) -> ErrorStrategy | None:
         return self._node_data.error_strategy
@@ -343,6 +359,7 @@ class LLMNode(Node):
                 node_run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
                     error=str(e),
+                    error_type=type(e).__name__,
                     inputs=node_inputs,
                     process_data=process_data,
                 )

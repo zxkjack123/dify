@@ -362,6 +362,12 @@ services:
       - ./volumes/qdrant:/qdrant/storage
     environment:
       QDRANT_API_KEY: ${QDRANT_API_KEY:-difyai123456}
+      QDRANT__SERVICE__GRPC_ENABLE: ${QDRANT_GRPC_ENABLED:-false}
+      QDRANT__SERVICE__GRPC_PORT: ${QDRANT_GRPC_PORT:-6334}
+    ulimits:
+      nofile:
+        soft: ${QDRANT_NOFILE_SOFT_LIMIT:-65535}
+        hard: ${QDRANT_NOFILE_HARD_LIMIT:-65535}
 
   # The Couchbase vector store.
   couchbase-server:

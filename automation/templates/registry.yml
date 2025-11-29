@@ -1,0 +1,58 @@
+templates:
+  - name: simple-chat
+    title: Simple Chat Workflow
+    description: "Minimal start → LLM → answer blueprint for general chat use cases."
+    file: simple_chat.yml
+    categories: ["starter", "chat"]
+    difficulty: basic
+    tags: ["llm", "chat", "starter"]
+    estimated_nodes: 3
+    variables:
+      - name: app_name
+        description: "Display name for the workflow."
+        default: "Simple Chatbot"
+      - name: description
+        description: "Short description that appears in the Console."
+        default: "Straightforward assistant template with a single LLM node."
+      - name: system_prompt
+        description: "System prompt instructions."
+        default: "You are a helpful assistant that replies with concise answers."
+      - name: model
+        description: "LLM model identifier configured in Dify."
+        default: "gpt-3.5-turbo"
+  - name: translator
+    title: Translation Assistant
+    description: "Route user text through one LLM node that rewrites to a target language."
+    file: translation.yml
+    categories: ["productivity", "localization"]
+    difficulty: basic
+    tags: ["llm", "translation"]
+    estimated_nodes: 3
+    variables:
+      - name: app_name
+        description: "Display name for the workflow."
+        default: "Translation Assistant"
+      - name: target_language
+        description: "Language the assistant should translate into."
+        default: "English"
+      - name: model
+        description: "LLM model identifier configured in Dify."
+        default: "gpt-4o-mini"
+  - name: sentiment-guardian
+    title: Sentiment Guardian
+    description: "Classify positive/neutral/negative sentiment with structured output."
+    file: sentiment_analysis.yml
+    categories: ["analytics"]
+    difficulty: intermediate
+    tags: ["classification", "llm"]
+    estimated_nodes: 3
+    variables:
+      - name: app_name
+        description: "Display name for the workflow."
+        default: "Sentiment Guardian"
+      - name: tone_labels
+        description: "Comma separated labels to include in the response."
+        default: "positive, neutral, negative"
+      - name: model
+        description: "LLM model identifier configured in Dify."
+        default: "gpt-4o-mini"

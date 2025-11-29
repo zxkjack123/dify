@@ -1,4 +1,8 @@
 const { codeInspectorPlugin } = require('code-inspector-plugin')
+
+const CACHE_VERSION = 'v20241106'
+const makeCacheName = suffix => `dify-${CACHE_VERSION}-${suffix}`
+
 const withPWA = require('next-pwa')({
   dest: 'public',
   register: true,
@@ -12,7 +16,7 @@ const withPWA = require('next-pwa')({
       urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
       handler: 'CacheFirst',
       options: {
-        cacheName: 'google-fonts',
+        cacheName: makeCacheName('google-fonts'),
         expiration: {
           maxEntries: 4,
           maxAgeSeconds: 365 * 24 * 60 * 60 // 1 year
@@ -23,7 +27,7 @@ const withPWA = require('next-pwa')({
       urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
       handler: 'CacheFirst',
       options: {
-        cacheName: 'google-fonts-webfonts',
+        cacheName: makeCacheName('google-fonts-webfonts'),
         expiration: {
           maxEntries: 4,
           maxAgeSeconds: 365 * 24 * 60 * 60 // 1 year
@@ -34,7 +38,7 @@ const withPWA = require('next-pwa')({
       urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|avif)$/i,
       handler: 'CacheFirst',
       options: {
-        cacheName: 'images',
+        cacheName: makeCacheName('images'),
         expiration: {
           maxEntries: 64,
           maxAgeSeconds: 30 * 24 * 60 * 60 // 30 days
@@ -45,7 +49,7 @@ const withPWA = require('next-pwa')({
       urlPattern: /\.(?:js|css)$/i,
       handler: 'StaleWhileRevalidate',
       options: {
-        cacheName: 'static-resources',
+        cacheName: makeCacheName('static-resources'),
         expiration: {
           maxEntries: 32,
           maxAgeSeconds: 24 * 60 * 60 // 1 day
@@ -56,7 +60,7 @@ const withPWA = require('next-pwa')({
       urlPattern: /^\/api\/.*/i,
       handler: 'NetworkFirst',
       options: {
-        cacheName: 'api-cache',
+        cacheName: makeCacheName('api-cache'),
         networkTimeoutSeconds: 10,
         expiration: {
           maxEntries: 16,

@@ -10,6 +10,7 @@ from core.workflow.enums import (
     ErrorStrategy as ErrorStrategyEnum,
 )
 from core.workflow.enums import (
+    NodeType,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
@@ -37,6 +38,17 @@ class ErrorHandler:
     selecting and applying the appropriate strategy based on
     node configuration.
     """
+
+    _DEFAULT_RETRY_INTERVAL_SECONDS = 1.0
+    _MAX_BACKOFF_SECONDS = 30.0
+    _TIMEOUT_KEYWORDS = (
+        "timeout",
+        "timed out",
+        "time-out",
+        "read timeout",
+        "connect timeout",
+        "超时",
+    )
 
     def __init__(self, graph: Graph, graph_execution: "GraphExecution") -> None:
         """
@@ -121,8 +133,10 @@ class ErrorHandler:
         if not node.retry or retry_count >= node.retry_config.max_retries:
             return None
 
-        # Wait for retry interval
-        time.sleep(node.retry_config.retry_interval_seconds)
+        # Wait for retry interval (supports exponential backoff for LLM timeout errors)
+        delay_seconds = self._calculate_retry_delay_seconds(node, retry_count, event)
+        if delay_seconds > 0:
+            time.sleep(delay_seconds)
 
         # Create retry event
         return NodeRunRetryEvent(
@@ -135,6 +149,26 @@ class ErrorHandler:
             error=event.error,
             retry_index=retry_count + 1,
         )
+
+    def _calculate_retry_delay_seconds(self, node, retry_count: int, event: NodeRunFailedEvent) -> float:
+        base_interval = node.retry_config.retry_interval_seconds or self._DEFAULT_RETRY_INTERVAL_SECONDS
+
+        if self._is_llm_timeout_error(node, event):
+            delay = base_interval * (2**retry_count)
+            return min(delay, self._MAX_BACKOFF_SECONDS)
+
+        return base_interval
+
+    def _is_llm_timeout_error(self, node, event: NodeRunFailedEvent) -> bool:
+        if node.node_type != NodeType.LLM:
+            return False
+
+        error_fragments = filter(None, [event.error, event.node_run_result.error, event.node_run_result.error_type])
+        message = " ".join(error_fragments).lower()
+        if not message:
+            return False
+
+        return any(keyword in message for keyword in self._TIMEOUT_KEYWORDS)
 
     def _handle_fail_branch(self, event: NodeRunFailedEvent):
         """

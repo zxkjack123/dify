@@ -75,6 +75,16 @@ docs/_build/
 # PyBuilder
 target/
 
+# Dify runtime artifacts
+storage/
+bundle_tmp/
+temp_plugins/
+nohup.out
+tmp-big.bin
+*.bundle
+workflow_graph*.json
+workflow_optimized.yml
+
 # Jupyter Notebook
 .ipynb_checkpoints
 
@@ -237,3 +247,6 @@ scripts/stress-test/reports/
 # mcp
 .playwright-mcp/
 .serena/
+
+# Local Dify workflows (ignored)
+/workflows_local/

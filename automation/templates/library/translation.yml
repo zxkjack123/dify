@@ -1,0 +1,101 @@
+app:
+  description: "Translate any input text into ${target_language}."
+  icon: "🌐"
+  icon_background: "#E6F7FF"
+  mode: advanced-chat
+  name: "${app_name}"
+  use_icon_as_answer_icon: false
+dependencies: []
+kind: app
+version: 0.3.1
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload: {}
+    opening_statement: ""
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ""
+      voice: ""
+  graph:
+    edges:
+      - id: start-to-llm
+        source: start
+        sourceHandle: source
+        target: translator
+        targetHandle: target
+      - id: llm-to-answer
+        source: translator
+        sourceHandle: source
+        target: answer
+        targetHandle: target
+    nodes:
+      - data:
+          desc: ""
+          title: Start
+          type: start
+          variables: []
+        id: start
+        position:
+          x: 80
+          y: 240
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+      - data:
+          context:
+            enabled: false
+            variable_selector: []
+          desc: ""
+          memory:
+            query_prompt_template: "{{#sys.query#}}"
+            window:
+              enabled: false
+              size: 10
+          model:
+            completion_params:
+              temperature: 0.3
+            mode: chat
+            name: "${model}"
+            provider: "openai"
+          prompt_template:
+            - role: system
+              text: |-
+                You are a translation assistant. Translate any user input to ${target_language}.
+                Preserve meaning and formatting. Only output the translated text in ${target_language} with no commentary.
+          selected: true
+          title: Translator
+          type: llm
+          variables: []
+          vision:
+            enabled: false
+        id: translator
+        position:
+          x: 360
+          y: 240
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+      - data:
+          answer: "{{#translator.text#}}"
+          desc: ""
+          title: Answer
+          type: answer
+          variables: []
+        id: answer
+        position:
+          x: 640
+          y: 240
+        sourcePosition: right
+        targetPosition: left
+        type: custom

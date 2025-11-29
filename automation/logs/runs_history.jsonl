@@ -1,0 +1,24 @@
+{"run_id": "run-2", "app_id": "app-2", "status": "failed", "start_time": 1763707861.2525403, "duration": 0.00012421607971191406, "error": "Something went wrong", "total_tokens": 0, "node_count": 0}
+{"run_id": "run-1", "app_id": "app-1", "status": "succeeded", "start_time": 1763707861.2532375, "duration": 0.00010824203491210938, "error": null, "total_tokens": 10, "node_count": 1}
+{"run_id": "", "app_id": "app-3", "status": "failed", "start_time": 1763707861.2538784, "duration": 0.20042753219604492, "error": "Workflow execution timed out after 0.1s", "total_tokens": 0, "node_count": 0}
+{"run_id": "run-2", "app_id": "app-2", "status": "failed", "start_time": 1763707882.2333987, "duration": 0.00011968612670898438, "error": "Something went wrong", "total_tokens": 0, "node_count": 0}
+{"run_id": "run-1", "app_id": "app-1", "status": "succeeded", "start_time": 1763707882.2341924, "duration": 0.00015211105346679688, "error": null, "total_tokens": 10, "node_count": 1}
+{"run_id": "", "app_id": "app-3", "status": "failed", "start_time": 1763707882.235106, "duration": 0.20044636726379395, "error": "Workflow execution timed out after 0.1s", "total_tokens": 0, "node_count": 0}
+{"run_id": "run-2", "app_id": "app-2", "status": "failed", "start_time": 1763708037.4801385, "duration": 0.00016450881958007812, "error": "Something went wrong", "total_tokens": 0, "node_count": 0}
+{"run_id": "run-1", "app_id": "app-1", "status": "succeeded", "start_time": 1763708037.4820833, "duration": 0.00015211105346679688, "error": null, "total_tokens": 10, "node_count": 1}
+{"run_id": "", "app_id": "app-3", "status": "failed", "start_time": 1763708037.4829738, "duration": 0.2004375457763672, "error": "Workflow execution timed out after 0.1s", "total_tokens": 0, "node_count": 0}
+{"run_id": "run-2", "app_id": "app-2", "status": "failed", "start_time": 1763708080.1525204, "duration": 0.000110626220703125, "error": "Something went wrong", "total_tokens": 0, "node_count": 0}
+{"run_id": "run-1", "app_id": "app-1", "status": "succeeded", "start_time": 1763708080.1538217, "duration": 0.0001049041748046875, "error": null, "total_tokens": 10, "node_count": 1}
+{"run_id": "", "app_id": "app-3", "status": "failed", "start_time": 1763708080.1544547, "duration": 0.20038127899169922, "error": "Workflow execution timed out after 0.1s", "total_tokens": 0, "node_count": 0}
+{"run_id": "", "app_id": "mock-app-id", "status": "succeeded", "start_time": 1763708080.3633168, "duration": 8.344650268554688e-05, "error": null, "total_tokens": 0, "node_count": 0}
+{"run_id": "run-2", "app_id": "app-2", "status": "failed", "start_time": 1763708123.6470592, "duration": 0.00018143653869628906, "error": "Something went wrong", "total_tokens": 0, "node_count": 0}
+{"run_id": "run-1", "app_id": "app-1", "status": "succeeded", "start_time": 1763708123.6489937, "duration": 0.00015473365783691406, "error": null, "total_tokens": 10, "node_count": 1}
+{"run_id": "", "app_id": "app-3", "status": "failed", "start_time": 1763708123.6498644, "duration": 0.20064902305603027, "error": "Workflow execution timed out after 0.1s", "total_tokens": 0, "node_count": 0}
+{"run_id": "", "app_id": "mock-app-id", "status": "succeeded", "start_time": 1763708123.8649876, "duration": 0.0001304149627685547, "error": null, "total_tokens": 0, "node_count": 1}
+{"run_id": "run-1", "app_id": "mock-app-id", "status": "succeeded", "start_time": 1763708566.4559782, "duration": 0.00011086463928222656, "error": null, "total_tokens": 0, "node_count": 0}
+{"run_id": "run-1", "app_id": "app-greeting", "status": "succeeded", "start_time": 1763708637.4295387, "duration": 0.0003573894500732422, "error": null, "total_tokens": 0, "node_count": 0}
+{"run_id": "run-2", "app_id": "app-math", "status": "succeeded", "start_time": 1763708637.4352567, "duration": 0.00038123130798339844, "error": null, "total_tokens": 0, "node_count": 0}
+{"run_id": "run-2", "app_id": "app-2", "status": "failed", "start_time": 1763710756.875529, "duration": 0.0002346038818359375, "error": "Something went wrong", "total_tokens": 0, "node_count": 0, "trace_id": "trace_97508eff725045b0baee559de7793bb6"}
+{"run_id": "run-1", "app_id": "app-1", "status": "succeeded", "start_time": 1763710756.8793697, "duration": 0.0002913475036621094, "error": null, "total_tokens": 10, "node_count": 1, "trace_id": "trace_d2ce8f341a704d8db508e5d21e84e9f5"}
+{"run_id": "", "app_id": "app-3", "status": "failed", "start_time": 1763710756.8807561, "duration": 0.20049238204956055, "error": "Workflow execution timed out after 0.1s", "total_tokens": 0, "node_count": 0, "trace_id": "trace_4ee8bfb46133427f95d5aea03727307d"}
+{"run_id": "", "app_id": "mock-app-id", "status": "succeeded", "start_time": 1763710757.092383, "duration": 0.00020170211791992188, "error": null, "total_tokens": 0, "node_count": 1, "trace_id": "trace_0f56c7b220dc45ff8f8c2a4510e6ccb0"}
