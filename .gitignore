@@ -240,6 +240,13 @@ web/public/fallback-*.js
 api/.env.backup
 /clickzetta
 
+# Local-only dev artifacts (keep workspace clean)
+/api/create_admin*.py
+/api/plugin_debug/
+/automation/logs/
+/new_code_block.txt
+/plugin_fix_source.zip
+
 # Benchmark
 scripts/stress-test/setup/config/
 scripts/stress-test/reports/
