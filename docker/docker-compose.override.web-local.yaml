@@ -1,0 +1,16 @@
+# Opt-in override to run a locally built Dify Web image (includes your workspace changes).
+#
+# Usage:
+#   docker compose -f docker-compose.yaml -f docker-compose.override.yaml -f docker-compose.override.web-local.yaml up -d --build web nginx
+#
+# This leaves the official backend images untouched and only rebuilds the frontend.
+
+services:
+  web:
+    build:
+      context: ../web
+      dockerfile: Dockerfile
+      args:
+        # Optional: surfaced in the container as COMMIT_SHA
+        COMMIT_SHA: ${COMMIT_SHA:-local}
+    image: dify-web:local-uxfix

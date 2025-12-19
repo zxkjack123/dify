@@ -167,23 +167,28 @@ const ModelModal: FC<ModelModalProps> = ({
       __authorization_name__,
       ...rest
     } = values
-    if (__model_name && __model_type) {
-      await handleSaveCredential({
-        credential_id: credential?.credential_id,
-        credentials: rest,
-        name: __authorization_name__,
-        model: __model_name,
-        model_type: __model_type,
-      })
+    try {
+      if (__model_name && __model_type) {
+        await handleSaveCredential({
+          credential_id: credential?.credential_id,
+          credentials: rest,
+          name: __authorization_name__,
+          model: __model_name,
+          model_type: __model_type,
+        })
+      }
+      else {
+        await handleSaveCredential({
+          credential_id: credential?.credential_id,
+          credentials: rest,
+          name: __authorization_name__,
+        })
+      }
+      onSave(values)
     }
-    else {
-      await handleSaveCredential({
-        credential_id: credential?.credential_id,
-        credentials: rest,
-        name: __authorization_name__,
-      })
+    catch {
+      // errors are surfaced via toast inside useAuth.handleSaveCredential
     }
-    onSave(values)
   }, [handleSaveCredential, credential?.credential_id, model, onSave, mode, selectedCredential, handleActiveCredential])
 
   const modalTitle = useMemo(() => {
@@ -405,6 +410,7 @@ const ModelModal: FC<ModelModalProps> = ({
                   variant='primary'
                   onClick={handleSave}
                   disabled={isLoading || doingAction}
+                  loading={doingAction}
                 >
                   {saveButtonText}
                 </Button>

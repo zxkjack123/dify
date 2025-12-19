@@ -163,6 +163,18 @@ const ModelLoadBalancingModal = ({
         onSave?.(provider.provider)
         onClose?.()
       }
+      else {
+        notify({
+          type: 'error',
+          message: (res as any)?.error || t('common.actionMsg.modifiedUnsuccessfully'),
+        })
+      }
+    }
+    catch (e: any) {
+      notify({
+        type: 'error',
+        message: e?.message || t('common.actionMsg.modifiedUnsuccessfully'),
+      })
     }
     finally {
       setLoading(false)
@@ -351,6 +363,7 @@ const ModelLoadBalancingModal = ({
                       || (draftConfig?.enabled && (draftConfig?.configs.filter(config => config.enabled).length ?? 0) < 2)
                       || isLoading
                     }
+                    loading={loading}
                   >{t('common.operation.save')}</Button>
                 </div>
               </div>

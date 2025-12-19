@@ -81,16 +81,30 @@ export const useAuth = (
       return
     try {
       handleSetDoingAction(true)
-      await getActiveCredentialService(!!model)({
+      const res: any = await getActiveCredentialService(!!model)({
         credential_id: credential.credential_id,
         model: model?.model,
         model_type: model?.model_type,
       })
-      notify({
-        type: 'success',
-        message: t('common.api.actionSuccess'),
-      })
+      if (res?.result === 'success') {
+        notify({
+          type: 'success',
+          message: t('common.api.actionSuccess'),
+        })
+      }
+      else {
+        notify({
+          type: 'error',
+          message: res?.error || t('common.actionMsg.modifiedUnsuccessfully'),
+        })
+      }
       handleRefreshModel(provider, undefined, true)
+    }
+    catch (e: any) {
+      notify({
+        type: 'error',
+        message: e?.message || t('common.actionMsg.modifiedUnsuccessfully'),
+      })
     }
     finally {
       handleSetDoingAction(false)
@@ -112,14 +126,28 @@ export const useAuth = (
           model: pendingOperationModel.current?.model,
           model_type: pendingOperationModel.current?.model_type,
         }
-        await getDeleteCredentialService(!!isModelCredential)(payload)
+        const res: any = await getDeleteCredentialService(!!isModelCredential)(payload)
+        if (res?.result && res.result !== 'success') {
+          notify({
+            type: 'error',
+            message: res?.error || t('common.actionMsg.modifiedUnsuccessfully'),
+          })
+          return
+        }
       }
       if (!pendingOperationCredentialId.current && pendingOperationModel.current) {
         payload = {
           model: pendingOperationModel.current.model,
           model_type: pendingOperationModel.current.model_type,
         }
-        await deleteModelService(payload)
+        const res: any = await deleteModelService(payload)
+        if (res?.result && res.result !== 'success') {
+          notify({
+            type: 'error',
+            message: res?.error || t('common.actionMsg.modifiedUnsuccessfully'),
+          })
+          return
+        }
       }
       notify({
         type: 'success',
@@ -128,6 +156,12 @@ export const useAuth = (
       handleRefreshModel(provider, undefined, true)
       onRemove?.(pendingOperationCredentialId.current ?? '')
       closeConfirmDelete()
+    }
+    catch (e: any) {
+      notify({
+        type: 'error',
+        message: e?.message || t('common.actionMsg.modifiedUnsuccessfully'),
+      })
     }
     finally {
       handleSetDoingAction(false)
@@ -149,6 +183,17 @@ export const useAuth = (
         notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
         handleRefreshModel(provider, undefined, !payload.credential_id)
       }
+      else {
+        throw new Error((res as any)?.error || t('common.actionMsg.modifiedUnsuccessfully'))
+      }
+    }
+    catch (e: any) {
+      // keep the modal open on failure; surface a clear error toast
+      notify({
+        type: 'error',
+        message: e?.message || t('common.actionMsg.modifiedUnsuccessfully'),
+      })
+      throw e
     }
     finally {
       handleSetDoingAction(false)

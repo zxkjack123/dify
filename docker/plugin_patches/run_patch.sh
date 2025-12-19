@@ -23,3 +23,11 @@ fi
 
 python /patches/patch_siliconflow_provider.py || true
 echo "[plugin_patch] Patch run complete."
+
+echo "[plugin_patch] Patching OpenAI-API-compatible plugin to avoid /v1/v1..."
+python /patches/patch_openai_api_compatible_v1.py || true
+echo "[plugin_patch] OpenAI-API-compatible patch run complete."
+
+echo "[plugin_patch] Patching OpenAI-API-compatible plugin for gpt-5* max_tokens compatibility..."
+python /patches/patch_openai_api_compatible_gpt5_tokens.py || true
+echo "[plugin_patch] OpenAI-API-compatible gpt-5* patch run complete."
