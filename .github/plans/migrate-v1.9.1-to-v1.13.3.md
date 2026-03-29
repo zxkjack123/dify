@@ -197,7 +197,7 @@
   git show 1.13.3:docker/docker-compose.yaml > docker/docker-compose.yaml
   ```
 
-#### Task 3.2: 更新 .env 文件
+#### ✅ Task 3.2: 更新 .env 文件
 - **目标**：在保留现有自定义值的前提下，添加 1.13.3 必需的新变量
 - **修改内容**：
   - 文件 `docker/.env`：添加/修改关键环境变量
