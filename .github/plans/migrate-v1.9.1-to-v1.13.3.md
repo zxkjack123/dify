@@ -178,7 +178,7 @@
 
 ### Phase 3: 配置文件升级
 
-#### Task 3.1: 更新 docker-compose.yaml
+#### ✅ Task 3.1: 更新 docker-compose.yaml
 - **目标**：切换到 1.13.3 官方 compose 配置
 - **修改内容**：
   - 文件 `docker/docker-compose.yaml`：用 `git show 1.13.3:docker/docker-compose.yaml` 替换
