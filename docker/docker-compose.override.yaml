@@ -1,4 +1,4 @@
-## docker-compose.override.yaml - SSD tuned, external embedding, Qdrant, CPU-capped vectorization (<= 6 cores total)
+## docker-compose.override.yaml - 1.13.3 compatible tuning
 
 services:
   api:
@@ -6,11 +6,7 @@ services:
       VECTOR_STORE: qdrant
       QDRANT_URL: http://qdrant:6333
       QDRANT_GRPC_ENABLED: "true"
-      QDRANT_CLIENT_TIMEOUT: 120
-
-      OPENAI_API_BASE: ${OPENAI_API_BASE:-http://localhost:8000/v1}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-changeme}
-
+      QDRANT_CLIENT_TIMEOUT: "120"
       SERVER_WORKER_AMOUNT: "2"
       SERVER_WORKER_CONNECTIONS: "500"
       LOG_LEVEL: INFO
@@ -24,16 +20,12 @@ services:
       QUEUE_MONITOR_INTERVAL: "15"
       ENABLE_CLEAN_EMBEDDING_CACHE_TASK: "true"
       CLEAN_EMBEDDING_CACHE_DAY_SETTING: "7"
-      # Upload limits
       UPLOAD_FILE_SIZE_LIMIT: "50"
       UPLOAD_FILE_BATCH_LIMIT: "1000"
       BATCH_UPLOAD_LIMIT: "1000"
-      # Allow long-running uploads
       GUNICORN_TIMEOUT: "1800"
-
     volumes:
       - ./volumes/app/storage:/app/api/storage
-
     extra_hosts:
       - "${EMBEDDING_HOST_1:-localhost}:${EMBEDDING_HOST_IP_1:-127.0.0.1}"
 
@@ -42,16 +34,12 @@ services:
       VECTOR_STORE: qdrant
       QDRANT_URL: http://qdrant:6333
       QDRANT_GRPC_ENABLED: "true"
-      QDRANT_CLIENT_TIMEOUT: 120
-
-      OPENAI_API_BASE: ${OPENAI_API_BASE:-http://localhost:8000/v1}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-changeme}
-
+      QDRANT_CLIENT_TIMEOUT: "120"
       MODE: worker
       CELERY_WORKER_CLASS: gevent
       CELERY_AUTO_SCALE: "false"
       CELERY_WORKER_AMOUNT: "2"
-      CELERY_QUEUES: generation,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation
+      CELERY_QUEUES: generation,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow_based_app_execution
       CELERYD_MAX_TASKS_PER_CHILD: "500"
       LOG_LEVEL: INFO
       SQLALCHEMY_POOL_SIZE: "60"
@@ -59,20 +47,17 @@ services:
       SQLALCHEMY_POOL_TIMEOUT: "30"
       SQLALCHEMY_POOL_PRE_PING: "true"
       SQLALCHEMY_POOL_USE_LIFO: "true"
-      # Upload limits for any file-processing endpoints invoked by worker
       UPLOAD_FILE_SIZE_LIMIT: "50"
       UPLOAD_FILE_BATCH_LIMIT: "1000"
       BATCH_UPLOAD_LIMIT: "1000"
-
     volumes:
       - ./volumes/app/storage:/app/api/storage
-
     extra_hosts:
       - "${EMBEDDING_HOST_1:-localhost}:${EMBEDDING_HOST_IP_1:-127.0.0.1}"
     cpus: "0.5"
 
   worker_dataset:
-    image: langgenius/dify-api:1.9.1
+    image: langgenius/dify-api:1.13.3
     restart: always
     environment:
       MODE: worker
@@ -90,14 +75,13 @@ services:
       SQLALCHEMY_POOL_USE_LIFO: "true"
       INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: "6000"
       VECTOR_STORE_BATCH_SIZE: "500"
-      # Upload limits for dataset ingestion flows
       UPLOAD_FILE_SIZE_LIMIT: "50"
       UPLOAD_FILE_BATCH_LIMIT: "1000"
       BATCH_UPLOAD_LIMIT: "1000"
       OPENDAL_SCHEME: ${OPENDAL_SCHEME:-fs}
       OPENDAL_FS_ROOT: ${OPENDAL_FS_ROOT:-storage}
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
-      DB_HOST: ${DB_HOST:-db}
+      DB_HOST: ${DB_HOST:-db_postgres}
       DB_PORT: ${DB_PORT:-5432}
       DB_USERNAME: ${DB_USERNAME:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-difyai123456}
@@ -109,14 +93,12 @@ services:
       VECTOR_STORE: qdrant
       QDRANT_URL: http://qdrant:6333
       QDRANT_GRPC_ENABLED: "true"
-      QDRANT_CLIENT_TIMEOUT: 120
-      OPENAI_API_BASE: ${OPENAI_API_BASE:-http://localhost:8000/v1}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-changeme}
+      QDRANT_CLIENT_TIMEOUT: "120"
       PLUGIN_DAEMON_URL: ${PLUGIN_DAEMON_URL:-http://plugin_daemon:5002}
       PLUGIN_DAEMON_KEY: ${PLUGIN_DAEMON_KEY:-lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi}
       INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
     depends_on:
-      db:
+      db_postgres:
         condition: service_healthy
       redis:
         condition: service_started
@@ -147,28 +129,8 @@ services:
       - ssrf_proxy_network
       - default
 
-  # One-shot helper to persist SiliconFlow provider patch into plugin storage
-  plugin_patch:
-    image: python:3.12-alpine
-    restart: "no"
-    depends_on:
-      plugin_daemon:
-        condition: service_started
-    volumes:
-      - ./plugin_patches:/patches:ro
-      - ./volumes/app/storage:/app/storage
-    entrypoint: ["sh", "/patches/run_patch.sh"]
-
   qdrant:
-    profiles:
-      - ""
-    volumes:
-      - ./volumes/qdrant:/qdrant/storage
     cpus: "1"
-
-  weaviate:
-    profiles:
-      - "weaviate"
 
   worker_beat:
     environment:
@@ -184,7 +146,7 @@ services:
       - "${EMBEDDING_HOST_1:-localhost}:${EMBEDDING_HOST_IP_1:-127.0.0.1}"
     cpus: "0.25"
 
-  db:
+  db_postgres:
     ports:
       - "5432:5432"
     command: >

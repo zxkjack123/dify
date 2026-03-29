@@ -247,7 +247,7 @@
   # 然后手动确认关键值
   ```
 
-#### Task 3.3: 重写 docker-compose.override.yaml
+#### ✅ Task 3.3: 重写 docker-compose.override.yaml
 - **目标**：适配 1.13.3 compose 结构，只保留必要定制
 - **修改内容**：
   - 文件 `docker/docker-compose.override.yaml`：全部重写
