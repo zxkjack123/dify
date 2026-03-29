@@ -395,7 +395,7 @@
   docker compose logs -f api 2>&1 | head -100
   ```
 
-#### Task 4.4: 启动剩余服务
+#### ✅ Task 4.4: 启动剩余服务
 - **目标**：启动 worker, worker_beat, worker_dataset, web, plugin_daemon, nginx, sandbox, ssrf_proxy
 - **修改内容**：无文件修改
 - **修改边界**：启动所有剩余服务
