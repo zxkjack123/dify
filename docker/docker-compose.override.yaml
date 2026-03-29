@@ -131,6 +131,10 @@ services:
 
   qdrant:
     cpus: "1"
+    ulimits:
+      nofile:
+        soft: ${QDRANT_NOFILE_SOFT_LIMIT:-65535}
+        hard: ${QDRANT_NOFILE_HARD_LIMIT:-65535}
 
   worker_beat:
     environment:

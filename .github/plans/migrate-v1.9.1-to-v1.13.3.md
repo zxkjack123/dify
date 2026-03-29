@@ -350,7 +350,7 @@
   docker compose pull
   ```
 
-#### Task 4.2: 启动基础设施（DB + Redis + Qdrant）
+#### ✅ Task 4.2: 启动基础设施（DB + Redis + Qdrant）
 - **目标**：先启动数据层，验证数据完整性
 - **修改内容**：无文件修改
 - **修改边界**：仅启动 db_postgres, redis, qdrant 三个服务
