@@ -372,7 +372,7 @@
   docker compose ps
   ```
 
-#### Task 4.3: 启动 API 服务（触发自动 migration）
+#### ✅ Task 4.3: 启动 API 服务（触发自动 migration）
 - **目标**：启动 api 容器，Flask 启动时自动运行 alembic upgrade head，执行 24 个新 migration
 - **修改内容**：无文件修改（migration 在镜像内执行）
 - **修改边界**：仅启动 api 服务
