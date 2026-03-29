@@ -84,7 +84,7 @@
   rsync -a --info=progress2 docker/volumes/app/storage/ ~/dify-backup-$(date +%Y%m%d)/storage/
   ```
 
-#### Task 1.3: Qdrant API 快照（在线预备份）
+#### ✅ Task 1.3: Qdrant API 快照（在线预备份）
 - **目标**：在停服前通过 Qdrant API 创建快照，作为第一道保险
 - **修改内容**：无文件修改
 - **修改边界**：不停止服务
