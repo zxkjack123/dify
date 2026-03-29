@@ -155,7 +155,7 @@
   rsync -a --info=progress2 docker/volumes/app/storage/ ~/dify-backup-$(date +%Y%m%d)/storage/
   ```
 
-#### Task 2.3: Qdrant 数据目录完整备份（关键——回退保障）
+#### ✅ Task 2.3: Qdrant 数据目录完整备份（关键——回退保障）
 - **目标**：在停服状态下复制 Qdrant 完整数据目录，确保回退时可用旧版本格式的数据直接替换
 - **修改内容**：无文件修改，仅复制到备份目录
 - **修改边界**：不修改原数据；必须在容器停止后、启动新版本前执行
