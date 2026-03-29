@@ -433,7 +433,7 @@
   - ✅ 已安装插件列表可获取
 - **潜在风险**：已配置的模型 provider credentials 可能因插件版本变化需要重新验证
 
-#### Task 5.2: 安装 xparse 插件
+#### ✅ Task 5.2: 安装 xparse 插件
 - **目标**：安装 intsig-textin/xparse 插件，验证子图像提取
 - **修改内容**：无文件修改（通过 Web UI 安装）
 - **修改边界**：仅安装插件
@@ -444,7 +444,8 @@
 - **验收标准**：
   - ✅ xparse 插件安装成功
   - ✅ 工具节点中可选择 xparse
-  - ✅ 解析结果包含子图像信息
+  - ✅ 解析结果包含子图像信息（本环境 `intsig-textin/xparse:1.0.0` 返回 `Image` 元素与 `image_url/page_image_url` 字段）
+  - ℹ️ 本次验证中未返回 `preview_url` 与 `dify_file_id`（插件代码仅在上游返回 `image_base64` 时写入这两个字段）
 - **潜在风险**：xparse 需要 Textin API key 配置
 
 ### Phase 6: 回退方案（仅在升级失败时使用）
