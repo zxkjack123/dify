@@ -101,7 +101,7 @@
   curl -X POST 'http://localhost:6333/snapshots' -H 'api-key: difyai123456'
   ```
 
-#### Task 1.4: Git 分支备份
+#### ✅ Task 1.4: Git 分支备份
 - **目标**：保护当前 zxk-dev 分支不被破坏
 - **修改内容**：仅创建 git tag
 - **修改边界**：不修改、不删除任何分支
