@@ -54,7 +54,7 @@
   - ✅ 配置文件 diff 仅涉及一行变更
 - **潜在风险**：YAML 格式错误导致整个 compose 解析失败 → 缓解：修改前先备份；修改后立即 `docker compose config` 验证
 
-#### Task 1.2: 重新创建 worker_dataset 容器
+#### ✅ Task 1.2: 重新创建 worker_dataset 容器
 
 - **目标**：让新配置生效，worker 开始消费 `priority_dataset` 队列
 - **修改内容**：
