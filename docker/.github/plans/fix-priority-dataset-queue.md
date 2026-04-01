@@ -75,7 +75,7 @@
 
 ### Phase 2: 验证积压任务消化
 
-#### Task 2.1: 验证 priority_dataset 队列清空
+#### ✅ Task 2.1: 验证 priority_dataset 队列清空
 
 - **目标**：确认积压的 82 个任务开始被消费并逐步清空
 - **修改内容**：无文件修改（纯验证 task）
