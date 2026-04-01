@@ -64,7 +64,7 @@ services:
       CELERY_WORKER_CLASS: gevent
       CELERY_AUTO_SCALE: "false"
       CELERY_WORKER_AMOUNT: "16"
-      CELERY_QUEUES: dataset
+      CELERY_QUEUES: dataset,priority_dataset
       CELERYD_MAX_TASKS_PER_CHILD: "1000"
       CELERYD_PREFETCH_MULTIPLIER: "4"
       LOG_LEVEL: INFO
