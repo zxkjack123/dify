@@ -89,7 +89,7 @@
   - ✅ `worker_dataset` 日志中出现 `document indexing task received` 消息
 - **潜在风险**：个别任务因嵌入模型超时而失败 → 缓解：Celery 会自动重试；也可通过 Dify 控制台手动触发重新索引
 
-#### Task 2.2: 验证 FusionDust 文档索引完成
+#### ✅ Task 2.2: 验证 FusionDust 文档索引完成
 
 - **目标**：确认 79 篇 FusionDust 文档从 `waiting` 变为 `completed`
 - **修改内容**：无文件修改（纯验证 task）
