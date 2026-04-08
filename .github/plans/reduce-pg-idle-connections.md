@@ -74,7 +74,7 @@
   - ✅ `SQLALCHEMY_MAX_OVERFLOW=5`
 - **潜在风险**：该值仅作为 docker-compose.yaml 的默认值，实际被 override 覆盖；风险极低
 
-#### Task 1.3: 修改 docker/docker-compose.override.yaml 中各服务连接池参数
+#### ✅ Task 1.3: 修改 docker/docker-compose.override.yaml 中各服务连接池参数
 - **目标**：修改实际生效的连接池配置（这是最关键的步骤）
 - **修改内容**：
   - 文件 `docker/docker-compose.override.yaml`：
