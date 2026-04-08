@@ -59,7 +59,7 @@
   - ✅ `POSTGRES_EFFECTIVE_CACHE_SIZE=20GB`
 - **潜在风险**：如果后续需要高并发批量处理，max_connections=100 可能需要临时调大
 
-#### Task 1.2: 修改 docker/.env 中的默认连接池参数
+#### ✅ Task 1.2: 修改 docker/.env 中的默认连接池参数
 - **目标**：降低 SQLAlchemy 默认连接池大小（作为 fallback 值）
 - **修改内容**：
   - 文件 `docker/.env`：
