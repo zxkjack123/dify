@@ -93,7 +93,7 @@
 
 ### Phase 2: 重启服务并验证
 
-#### Task 2.1: 重启 docker compose 服务
+#### ✅ Task 2.1: 重启 docker compose 服务
 - **目标**：使新配置生效
 - **修改内容**：
   - 执行 `cd docker && docker compose down && docker compose up -d`
