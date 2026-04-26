@@ -1,8 +1,8 @@
 
-import os
+from sqlalchemy import text
+
 from app_factory import create_app
 from extensions.ext_database import db
-from sqlalchemy import text
 
 app = create_app()
 

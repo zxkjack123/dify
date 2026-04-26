@@ -1,7 +1,8 @@
 import os
-import requests
-import httpx
 import time
+
+import httpx
+import requests
 
 api_key = os.environ.get("UIUIAPI_API_KEY")
 base_url = os.environ.get("UIUIAPI_BASE_URL")

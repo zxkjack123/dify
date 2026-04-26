@@ -1,7 +1,7 @@
 
+import json
 import os
 import sys
-import json
 
 # Set environment variables
 os.environ['STORAGE_TYPE'] = 'local'
@@ -14,10 +14,10 @@ os.environ['DB_DATABASE'] = 'dify'
 
 from app_factory import create_app
 from extensions.ext_database import db
-from models.model import App
 from models.workflow import Workflow
 
 app = create_app()
+
 
 def dump_dsl(app_id):
     with app.app_context():
@@ -26,6 +26,7 @@ def dump_dsl(app_id):
             print(json.dumps(workflow.graph_dict, indent=2, ensure_ascii=False))
         else:
             print(json.dumps({"error": "No workflow found"}))
+
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:

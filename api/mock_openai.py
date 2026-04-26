@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request
 
 app = Flask(__name__)
 
+
 @app.route('/v1/models', methods=['GET'])
 def models():
     return jsonify({
@@ -11,6 +12,7 @@ def models():
             {"id": "gpt-4", "object": "model", "created": 1686935002, "owned_by": "openai"}
         ]
     })
+
 
 @app.route('/v1/chat/completions', methods=['POST'])
 def chat_completions():
@@ -72,6 +74,7 @@ def chat_completions():
                 "total_tokens": 21
             }
         })
+
 
 if __name__ == '__main__':
     app.run(port=9999)

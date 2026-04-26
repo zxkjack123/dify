@@ -16,7 +16,7 @@ everything into a live Dify instance.
 """
 
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import yaml
 
@@ -28,13 +28,13 @@ OUTLINE_MD_PATH = ROOT / (
 )
 
 
-def load_workflow() -> Dict[str, Any]:
+def load_workflow() -> dict[str, Any]:
     if not DSL_PATH.exists():
         raise SystemExit(f"DSL file not found: {DSL_PATH}")
 
     text = DSL_PATH.read_text(encoding="utf-8")
     try:
-        data: Dict[str, Any] = yaml.safe_load(text)
+        data: dict[str, Any] = yaml.safe_load(text)
     except Exception as exc:  # pragma: no cover - defensive
         raise SystemExit(f"Failed to parse YAML DSL: {exc}") from exc
 
@@ -44,13 +44,13 @@ def load_workflow() -> Dict[str, Any]:
     return data
 
 
-def build_node_map(data: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+def build_node_map(data: dict[str, Any]) -> dict[str, dict[str, Any]]:
     try:
-        nodes: List[Dict[str, Any]] = data["workflow"]["graph"]["nodes"]
+        nodes: list[dict[str, Any]] = data["workflow"]["graph"]["nodes"]
     except Exception as exc:  # pragma: no cover - schema guard
         raise SystemExit(f"Unexpected DSL schema when accessing nodes: {exc}") from exc
 
-    node_map: Dict[str, Dict[str, Any]] = {}
+    node_map: dict[str, dict[str, Any]] = {}
     for node in nodes:
         node_id = node.get("id")
         if isinstance(node_id, str):
@@ -58,13 +58,13 @@ def build_node_map(data: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
     return node_map
 
 
-def compile_python_nodes(node_map: Dict[str, Dict[str, Any]]) -> List[Tuple[str, str, Exception]]:
+def compile_python_nodes(node_map: dict[str, dict[str, Any]]) -> list[tuple[str, str, Exception]]:
     """Compile all python3 code nodes to ensure syntax is valid.
 
     Returns a list of (node_id, title, exception) for any failures.
     """
 
-    failures: List[Tuple[str, str, Exception]] = []
+    failures: list[tuple[str, str, Exception]] = []
 
     for node_id, node in node_map.items():
         data = node.get("data", {})
@@ -76,7 +76,7 @@ def compile_python_nodes(node_map: Dict[str, Dict[str, Any]]) -> List[Tuple[str,
 
         title = str(data.get("title", ""))
         try:
-            ns: Dict[str, Any] = {}
+            ns: dict[str, Any] = {}
             compiled = compile(code, f"<node {node_id} {title}>", "exec")
             exec(compiled, ns, ns)
         except Exception as exc:  # pragma: no cover - diagnostic
@@ -85,7 +85,7 @@ def compile_python_nodes(node_map: Dict[str, Dict[str, Any]]) -> List[Tuple[str,
     return failures
 
 
-def run_json_parser_smoke_tests(node_map: Dict[str, Dict[str, Any]]) -> None:
+def run_json_parser_smoke_tests(node_map: dict[str, dict[str, Any]]) -> None:
     """Run AO1/AO2/AO3 JSON parsers on a small sample payload.
 
     This exercises the shared parse_parser_output/normalize_list helpers.
@@ -108,11 +108,11 @@ def run_json_parser_smoke_tests(node_map: Dict[str, Dict[str, Any]]) -> None:
 
     payload = _json.dumps(sample_json, ensure_ascii=False)
 
-    def _run_node_by_title(title: str) -> Dict[str, Any]:
+    def _run_node_by_title(title: str) -> dict[str, Any]:
         for node in node_map.values():
             data = node.get("data", {})
             if data.get("title") == title and isinstance(data.get("code"), str):
-                ns: Dict[str, Any] = {}
+                ns: dict[str, Any] = {}
                 compiled = compile(data["code"], f"<node {title}>", "exec")
                 exec(compiled, ns, ns)
                 if "main" not in ns:
@@ -138,7 +138,7 @@ def run_json_parser_smoke_tests(node_map: Dict[str, Dict[str, Any]]) -> None:
     assert isinstance(ao3_result.get("num_factors"), int)
 
 
-def run_outline_parser_on_md(node_map: Dict[str, Dict[str, Any]]) -> None:
+def run_outline_parser_on_md(node_map: dict[str, dict[str, Any]]) -> None:
     """Feed the real outline Markdown into the AO1 flexible parser.
 
     This approximates the user scenario where the outline text may not
@@ -154,7 +154,7 @@ def run_outline_parser_on_md(node_map: Dict[str, Dict[str, Any]]) -> None:
     for node in node_map.values():
         data = node.get("data", {})
         if data.get("title") == target_title and isinstance(data.get("code"), str):
-            ns: Dict[str, Any] = {}
+            ns: dict[str, Any] = {}
             compiled = compile(data["code"], f"<node {target_title}>", "exec")
             exec(compiled, ns, ns)
             if "main" not in ns:

@@ -76,30 +76,34 @@ def _patch_llm_py(path: Path) -> bool:
         )
 
     # --- _invoke token compatibility ---
+    # The upstream plugin implementation has changed across versions.
+    # Instead of anchoring on a specific thinking-mode block, insert our
+    # compatibility shim right before we hand off to the base implementation.
     if TOKEN_COMPAT_MARKER not in text:
-        anchor = (
-            "        enable_thinking = model_parameters.pop(\"enable_thinking\", None)\n"
-            "        if enable_thinking is not None:\n"
-            "            model_parameters[\"chat_template_kwargs\"] = {\"enable_thinking\": bool(enable_thinking)}\n"
+        shim = (
+            "        "
+            + TOKEN_COMPAT_MARKER
+            + "\n"
+            + "        # for newer model families (e.g. gpt-5*). They may return HTTP 400 if `max_tokens`\n"
+            + "        # is provided.\n"
+            + "        if (\n"
+            + "            isinstance(model, str)\n"
+            + "            and model.lower().startswith(\"gpt-5\")\n"
+            + "            and \"max_tokens\" in model_parameters\n"
+            + "            and \"max_completion_tokens\" not in model_parameters\n"
+            + "        ):\n"
+            + "            model_parameters[\"max_completion_tokens\"] = model_parameters.pop(\"max_tokens\")\n\n"
         )
+
+        # Prefer inserting before the "drop analyze channel" block when present.
+        anchor = "        # Remove thinking content from assistant messages for better performance.\n"
         if anchor in text:
-            insertion = (
-                anchor
-                + "\n"
-                + "        "
-                + TOKEN_COMPAT_MARKER
-                + "\n"
-                + "        # for newer model families (e.g. gpt-5*). They may return HTTP 400 if `max_tokens`\n"
-                + "        # is provided.\n"
-                + "        if (\n"
-                + "            isinstance(model, str)\n"
-                + "            and model.lower().startswith(\"gpt-5\")\n"
-                + "            and \"max_tokens\" in model_parameters\n"
-                + "            and \"max_completion_tokens\" not in model_parameters\n"
-                + "        ):\n"
-                + "            model_parameters[\"max_completion_tokens\"] = model_parameters.pop(\"max_tokens\")\n"
-            )
-            text = text.replace(anchor, insertion, 1)
+            text = text.replace(anchor, shim + anchor, 1)
+        else:
+            # Fallback: insert right before the base invoke return.
+            return_anchor = "        return super()._invoke(\n"
+            if return_anchor in text:
+                text = text.replace(return_anchor, shim + return_anchor, 1)
 
     # --- validate_credentials override ---
     if "def validate_credentials(" not in text:

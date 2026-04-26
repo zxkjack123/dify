@@ -1,5 +1,6 @@
 import base64
 import json
+import re
 import secrets
 import string
 from collections.abc import Mapping
@@ -39,6 +40,23 @@ BODY_TYPE_TO_CONTENT_TYPE = {
     "form-data": "multipart/form-data",
     "raw-text": "text/plain",
 }
+
+
+_SENSITIVE_HEADER_RE = re.compile(
+    r"^(?:authorization|cookie|x-api-key|api-key|x-auth-token|x-access-token|x-ti-secret-code)$|"
+    r"(?:token|secret|password|passwd|api[_-]?key)",
+    re.IGNORECASE,
+)
+
+
+def _is_sensitive_header(name: str) -> bool:
+    return bool(_SENSITIVE_HEADER_RE.search(name.strip()))
+
+
+def _mask_value(value: str) -> str:
+    if not value:
+        return ""
+    return "*" * len(value)
 
 
 class Executor:
@@ -390,13 +408,18 @@ class Executor:
             if body.type == "form-data":
                 headers["Content-Type"] = f"multipart/form-data; boundary={boundary}"
         for k, v in headers.items():
+            # Mask sensitive headers (both built-in auth header and user-provided secret-like headers)
             if self.auth.type == "api-key":
                 authorization_header = "Authorization"
                 if self.auth.config and self.auth.config.header:
                     authorization_header = self.auth.config.header
                 if k.lower() == authorization_header.lower():
-                    raw += f"{k}: {'*' * len(v)}\r\n"
+                    raw += f"{k}: {_mask_value(v)}\r\n"
                     continue
+            if _is_sensitive_header(k):
+                raw += f"{k}: {_mask_value(v)}\r\n"
+                continue
+
             raw += f"{k}: {v}\r\n"
 
         body_string = ""
@@ -409,14 +432,20 @@ class Executor:
                 if len(file_entry) != 2 or len(file_entry[1]) < 2:
                     continue  # skip malformed entries
                 key = file_entry[0]
+                filename = file_entry[1][0] if len(file_entry[1]) > 0 else None
                 content = file_entry[1][1]
+                mime_type = file_entry[1][2] if len(file_entry[1]) > 2 else "application/octet-stream"
                 body_string += f"--{boundary}\r\n"
-                body_string += f'Content-Disposition: form-data; name="{key}"\r\n\r\n'
-                # decode content safely
-                try:
-                    body_string += content.decode("utf-8")
-                except UnicodeDecodeError:
-                    body_string += content.decode("utf-8", errors="replace")
+                # Don't embed binary file content in logs (can be huge and may freeze UI / bloat DB).
+                # Keep only metadata so users can still debug.
+                if filename:
+                    body_string += (
+                        f'Content-Disposition: form-data; name="{key}"; filename="{filename}"\r\n'
+                        f"Content-Type: {mime_type}\r\n\r\n"
+                    )
+                else:
+                    body_string += f'Content-Disposition: form-data; name="{key}"\r\nContent-Type: {mime_type}\r\n\r\n'
+                body_string += f"<{len(content)} bytes of file content omitted>"
                 body_string += "\r\n"
             body_string += f"--{boundary}--\r\n"
         elif self.node_data.body:

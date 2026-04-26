@@ -3,7 +3,7 @@ from collections.abc import Generator, Sequence
 from typing import IO
 
 from core.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta
-from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool, AssistantPromptMessage
+from core.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage, PromptMessageTool
 from core.model_runtime.entities.model_entities import AIModelEntity
 from core.model_runtime.entities.rerank_entities import RerankResult
 from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult
@@ -37,16 +37,17 @@ class PluginModelClient(BasePluginClient):
         except Exception:
             # Mock for openai_api_compatible
             from datetime import datetime
+
             from core.model_runtime.entities.common_entities import I18nObject
             from core.model_runtime.entities.model_entities import ModelType
             from core.model_runtime.entities.provider_entities import (
                 ConfigurateMethod,
-                ProviderEntity,
-                ModelCredentialSchema,
-                FieldModelSchema,
                 CredentialFormSchema,
+                FieldModelSchema,
                 FormType,
-                ProviderCredentialSchema
+                ModelCredentialSchema,
+                ProviderCredentialSchema,
+                ProviderEntity,
             )
             
             return [
@@ -128,8 +129,13 @@ class PluginModelClient(BasePluginClient):
                 return resp.model_schema
         except Exception:
             if provider == "openai_api_compatible":
-                from core.model_runtime.entities.model_entities import AIModelEntity, ModelType, FetchFrom, ModelPropertyKey
                 from core.model_runtime.entities.common_entities import I18nObject
+                from core.model_runtime.entities.model_entities import (
+                    AIModelEntity,
+                    FetchFrom,
+                    ModelPropertyKey,
+                    ModelType,
+                )
                 
                 return AIModelEntity(
                     model=model,

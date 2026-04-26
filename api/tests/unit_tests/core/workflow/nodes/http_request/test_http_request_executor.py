@@ -348,3 +348,48 @@ def test_init_params():
     executor = create_executor("key1:value1\n\nkey2:value2\n\n")
     executor._init_params()
     assert executor.params == [("key1", "value1"), ("key2", "value2")]
+
+
+def test_to_log_does_not_embed_file_bytes_and_masks_sensitive_headers():
+    variable_pool = VariablePool(
+        system_variables=SystemVariable.empty(),
+        user_inputs={},
+    )
+
+    node_data = HttpRequestNodeData(
+        title="Test multipart file log redaction",
+        method="post",
+        url="https://api.example.com/upload",
+        authorization=HttpRequestNodeAuthorization(type="no-auth"),
+        headers="x-ti-secret-code: supersecret\n",
+        params="",
+        body=HttpRequestNodeBody(
+            type="form-data",
+            data=[],
+        ),
+    )
+
+    executor = Executor(
+        node_data=node_data,
+        timeout=HttpRequestNodeTimeout(connect=10, read=30, write=30),
+        variable_pool=variable_pool,
+    )
+
+    # Inject an actual file entry directly; we only need to validate log rendering.
+    pdf_bytes = b"%PDF-1.7\n%\xe2\xe3\xcf\xd3\n(binary)"
+    executor.files = [("file", ("test.pdf", pdf_bytes, "application/pdf"))]
+
+    raw_request = executor.to_log()
+
+    # Should keep header name but not leak header value
+    assert "x-ti-secret-code" in raw_request
+    assert "supersecret" not in raw_request
+
+    # Should not embed binary bytes into the log
+    assert "%PDF-1.7" not in raw_request
+    assert "(binary)" not in raw_request
+
+    # Should include file metadata and the omission marker
+    assert 'filename="test.pdf"' in raw_request
+    assert "application/pdf" in raw_request
+    assert "bytes of file content omitted" in raw_request
