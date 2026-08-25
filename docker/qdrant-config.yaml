@@ -1,0 +1,5 @@
+storage:
+  optimizers:
+    memmap_threshold_kb: 0
+  hnsw_index:
+    on_disk: true
